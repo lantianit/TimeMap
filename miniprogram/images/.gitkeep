@@ -1,0 +1,10 @@
+# 图片资源目录
+
+需要准备的图片：
+- default-avatar.png：默认头像（或使用网络图片）
+- tab-home.png：底部导航"首页"图标（未选中）
+- tab-home-active.png：底部导航"首页"图标（选中）
+- tab-profile.png：底部导航"我的"图标（未选中）
+- tab-profile-active.png：底部导航"我的"图标（选中）
+
+图标尺寸建议：81px * 81px（@3x）

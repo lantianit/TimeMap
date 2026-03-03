@@ -1,3 +1,5 @@
+const { checkLogin } = require('../../utils/request');
+
 Page({
   data: {
     imagePath: '',
@@ -6,6 +8,10 @@ Page({
     latitude: 0,
     longitude: 0,
     description: ''
+  },
+
+  onLoad() {
+    checkLogin();
   },
 
   /** 选择图片 */

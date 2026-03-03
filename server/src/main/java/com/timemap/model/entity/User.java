@@ -17,6 +17,16 @@ public class User {
 
     private String avatarUrl;
 
+    private Integer gender;
+
+    private String country;
+
+    private String province;
+
+    private String city;
+
+    private Integer profileCompleted;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

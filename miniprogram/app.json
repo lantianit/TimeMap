@@ -2,13 +2,35 @@
   "pages": [
     "pages/map/map",
     "pages/upload/upload",
-    "pages/detail/detail"
+    "pages/detail/detail",
+    "pages/profile/profile"
   ],
   "window": {
     "navigationBarTitleText": "时光地图",
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#07c160",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/map/map",
+        "text": "首页",
+        "iconPath": "images/tab-home.png",
+        "selectedIconPath": "images/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tab-profile.png",
+        "selectedIconPath": "images/tab-profile-active.png"
+      }
+    ],
+    "custom": false
   },
   "permission": {
     "scope.userLocation": {

@@ -1,0 +1,47 @@
+<!-- 个人中心页 -->
+<view class="container">
+  <!-- 未登录状态 -->
+  <view wx:if="{{!isLoggedIn}}" class="login-section">
+    <view class="login-header">
+      <view class="logo-circle">
+        <text class="logo-text">时光</text>
+      </view>
+      <text class="app-name">时光地图</text>
+      <text class="app-desc">记录城市的每一刻</text>
+    </view>
+
+    <view class="login-features">
+      <view class="feature-item">
+        <text class="feature-icon">📷</text>
+        <text class="feature-text">上传城市照片</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-icon">🗺️</text>
+        <text class="feature-text">地图浏览记忆</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-icon">⏰</text>
+        <text class="feature-text">时间轴回顾</text>
+      </view>
+    </view>
+
+    <button class="login-btn" bindtap="onLogin">微信一键登录</button>
+    <text class="login-hint">登录即表示同意《用户协议》和《隐私政策》</text>
+  </view>
+
+  <!-- 已登录状态 -->
+  <view wx:if="{{isLoggedIn}}">
+    <view class="user-card">
+      <image class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill" />
+      <view class="user-info">
+        <text class="nickname">{{userInfo.nickname}}</text>
+        <text class="location" wx:if="{{userInfo.province}}">{{userInfo.province}} {{userInfo.city}}</text>
+      </view>
+    </view>
+
+    <view class="section-title">我的上传</view>
+    <view class="empty-tip">暂无上传记录</view>
+
+    <button class="logout-btn" bindtap="onLogout">退出登录</button>
+  </view>
+</view>

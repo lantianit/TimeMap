@@ -6,29 +6,22 @@ App({
   },
 
   onLaunch() {
-    this.autoLogin();
-  },
-
-  /** 自动登录 */
-  autoLogin() {
+    // 检查本地缓存的 token
     const token = wx.getStorageSync('token');
     if (token) {
       this.globalData.token = token;
-      console.log('[TimeMap] 使用缓存Token登录');
-      return;
+      this.globalData.userInfo = wx.getStorageSync('userInfo') || null;
+      console.log('[TimeMap] 使用缓存Token');
     }
-    console.log('[TimeMap] 无缓存Token，发起微信登录...');
-    this.login()
-      .then((data) => {
-        console.log('[TimeMap] 登录成功', data);
-      })
-      .catch((err) => {
-        console.error('[TimeMap] 登录失败', err);
-      });
   },
 
-  /** 微信登录 */
-  login() {
+  /** 是否已登录 */
+  isLoggedIn() {
+    return !!this.globalData.token;
+  },
+
+  /** 登录（由页面主动调用） */
+  login(userProfile) {
     return new Promise((resolve, reject) => {
       wx.login({
         success: (res) => {
@@ -39,14 +32,28 @@ App({
           wx.request({
             url: `${this.globalData.baseUrl}/auth/login`,
             method: 'POST',
-            data: { code: res.code },
+            data: {
+              code: res.code,
+              nickname: userProfile.nickName,
+              avatarUrl: userProfile.avatarUrl,
+              gender: userProfile.gender,
+              country: userProfile.country,
+              province: userProfile.province,
+              city: userProfile.city
+            },
             header: { 'Content-Type': 'application/json' },
             success: (resp) => {
               if (resp.data.code === 200) {
                 const { token, userId } = resp.data.data;
                 this.globalData.token = token;
-                this.globalData.userInfo = { userId };
+                this.globalData.userInfo = {
+                  userId,
+                  nickname: userProfile.nickName,
+                  avatarUrl: userProfile.avatarUrl
+                };
                 wx.setStorageSync('token', token);
+                wx.setStorageSync('userInfo', this.globalData.userInfo);
+                console.log('[TimeMap] 登录成功', resp.data.data);
                 resolve(resp.data.data);
               } else {
                 reject(new Error(resp.data.message));
@@ -58,5 +65,13 @@ App({
         fail: (err) => reject(err)
       });
     });
+  },
+
+  /** 退出登录 */
+  logout() {
+    this.globalData.token = '';
+    this.globalData.userInfo = null;
+    wx.removeStorageSync('token');
+    wx.removeStorageSync('userInfo');
   }
 });

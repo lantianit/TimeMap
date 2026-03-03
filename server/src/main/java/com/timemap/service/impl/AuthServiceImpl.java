@@ -2,6 +2,7 @@ package com.timemap.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.timemap.mapper.UserMapper;
+import com.timemap.model.dto.LoginRequest;
 import com.timemap.model.dto.LoginResponse;
 import com.timemap.model.dto.WxSessionResponse;
 import com.timemap.model.entity.User;
@@ -20,9 +21,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
 
     @Override
-    public LoginResponse login(String code) {
+    public LoginResponse login(LoginRequest request) {
         // 1. 调用微信接口获取 openid
-        WxSessionResponse wxResp = wxApiUtil.code2Session(code);
+        WxSessionResponse wxResp = wxApiUtil.code2Session(request.getCode());
         String openid = wxResp.getOpenid();
 
         // 2. 查询或创建用户
@@ -34,13 +35,27 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             user = new User();
             user.setOpenid(openid);
-            user.setNickname("");
-            user.setAvatarUrl("");
-            userMapper.insert(user);
             isNew = true;
         }
 
-        // 3. 签发 JWT Token
+        // 3. 更新用户资料
+        if (request.getNickname() != null && !request.getNickname().isEmpty()) {
+            user.setNickname(request.getNickname());
+            user.setAvatarUrl(request.getAvatarUrl());
+            user.setGender(request.getGender());
+            user.setCountry(request.getCountry());
+            user.setProvince(request.getProvince());
+            user.setCity(request.getCity());
+            user.setProfileCompleted(1);
+        }
+
+        if (isNew) {
+            userMapper.insert(user);
+        } else {
+            userMapper.updateById(user);
+        }
+
+        // 4. 签发 JWT Token
         String token = jwtUtil.generateToken(user.getId(), openid);
 
         return LoginResponse.of(token, user.getId(), isNew);

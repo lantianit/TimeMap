@@ -1,10 +1,7 @@
 const app = getApp();
 
-let isRefreshing = false;
-let pendingRequests = [];
-
 /**
- * 封装 wx.request，自动携带 Token，401 自动重新登录
+ * 封装 wx.request，自动携带 Token
  */
 function request(url, method, data) {
   return new Promise((resolve, reject) => {
@@ -20,8 +17,11 @@ function request(url, method, data) {
         if (res.data.code === 200) {
           resolve(res.data);
         } else if (res.data.code === 401) {
-          // Token 过期，重新登录
-          handleTokenExpired(url, method, data, resolve, reject);
+          // Token 过期或无效，清除缓存，提示登录
+          app.logout();
+          wx.showToast({ title: '请先登录', icon: 'none' });
+          wx.switchTab({ url: '/pages/profile/profile' });
+          reject(res.data);
         } else {
           reject(res.data);
         }
@@ -33,33 +33,16 @@ function request(url, method, data) {
   });
 }
 
-function handleTokenExpired(url, method, data, resolve, reject) {
-  if (isRefreshing) {
-    // 正在刷新中，排队等待
-    pendingRequests.push({ url, method, data, resolve, reject });
-    return;
+/**
+ * 检查是否已登录，未登录则跳转到个人中心
+ */
+function checkLogin() {
+  if (!app.isLoggedIn()) {
+    wx.showToast({ title: '请先登录', icon: 'none' });
+    wx.switchTab({ url: '/pages/profile/profile' });
+    return false;
   }
-
-  isRefreshing = true;
-  wx.removeStorageSync('token');
-  app.globalData.token = '';
-
-  app.login()
-    .then(() => {
-      isRefreshing = false;
-      // 重试原请求
-      request(url, method, data).then(resolve).catch(reject);
-      // 重试排队的请求
-      pendingRequests.forEach((req) => {
-        request(req.url, req.method, req.data).then(req.resolve).catch(req.reject);
-      });
-      pendingRequests = [];
-    })
-    .catch((err) => {
-      isRefreshing = false;
-      pendingRequests = [];
-      reject(err);
-    });
+  return true;
 }
 
-module.exports = { request };
+module.exports = { request, checkLogin };

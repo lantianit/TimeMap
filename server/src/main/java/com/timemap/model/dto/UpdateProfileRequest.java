@@ -4,15 +4,19 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class LoginRequest {
+public class UpdateProfileRequest {
 
-    @NotBlank(message = "code不能为空")
-    private String code;
-
+    @NotBlank(message = "昵称不能为空")
     private String nickname;
+
+    @NotBlank(message = "头像不能为空")
     private String avatarUrl;
+
     private Integer gender;
+
     private String country;
+
     private String province;
+
     private String city;
 }
