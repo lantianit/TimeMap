@@ -4,6 +4,12 @@
     <text>{{uploadToast}}</text>
   </view>
 
+  <!-- 时光筛选胶囊（优化点1） -->
+  <view class="filter-capsule" bindtap="onFilterTap">
+    <text class="filter-icon">🕐</text>
+    <text class="filter-text">{{filterLabel}}</text>
+  </view>
+
   <!-- 地图 -->
   <map
     id="map" class="map"
@@ -15,17 +21,45 @@
     bindregionchange="onRegionChange"
   />
 
+  <!-- 一键定位按钮（优化点2） -->
+  <view class="locate-btn {{hasLocation ? '' : 'disabled'}}" bindtap="onLocateTap">
+    <view class="locate-arrow"></view>
+  </view>
+
+  <!-- 时光筛选面板 -->
+  <view class="filter-mask" wx:if="{{showFilterPanel}}" bindtap="onFilterTap"></view>
+  <view class="filter-panel {{showFilterPanel ? 'show' : ''}}">
+    <view class="filter-panel-header">
+      <text class="filter-panel-title">时光筛选</text>
+      <text class="filter-panel-close" bindtap="onFilterTap">✕</text>
+    </view>
+    <view class="filter-row">
+      <text class="filter-label">开始日期</text>
+      <picker mode="date" value="{{filterStartDate}}" bindchange="onFilterStartChange">
+        <view class="filter-date-btn">{{filterStartDate || '不限'}}</view>
+      </picker>
+    </view>
+    <view class="filter-row">
+      <text class="filter-label">结束日期</text>
+      <picker mode="date" value="{{filterEndDate}}" bindchange="onFilterEndChange">
+        <view class="filter-date-btn">{{filterEndDate || '不限'}}</view>
+      </picker>
+    </view>
+    <view class="filter-actions">
+      <view class="filter-reset-btn" bindtap="onFilterReset">重置</view>
+      <view class="filter-confirm-btn" bindtap="onFilterConfirm">确认筛选</view>
+    </view>
+  </view>
+
   <!-- 底部操作栏 -->
   <view class="action-bar {{showActionBar ? 'show' : ''}}">
     <view class="action-bar-inner">
       <view class="action-location">
-        <view class="location-icon">📍</view>
-        <view class="location-text">{{tapLocationName}}</view>
+        <text class="location-text">{{tapLocationName}}</text>
       </view>
       <picker mode="date" value="{{uploadDate}}" bindchange="onUploadDateChange">
         <view class="action-date">
-          <view class="date-icon">📅</view>
-          <view class="date-text">{{uploadDateDisplay}}</view>
+          <text class="date-text">{{uploadDateDisplay}}</text>
         </view>
       </picker>
       <view class="action-buttons">
@@ -38,7 +72,7 @@
   </view>
 
   <!-- 底部提示 -->
-  <view class="hint-bar" wx:if="{{!showActionBar && !uploading}}">
+  <view class="hint-bar" wx:if="{{!showActionBar && !uploading && !showFilterPanel}}">
     <text>点击地图选择上传位置</text>
   </view>
 </view>

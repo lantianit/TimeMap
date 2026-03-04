@@ -55,8 +55,9 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
     }
 
     @Override
-    public List<NearbyPhotoResponse> findNearby(double lat, double lng, double radiusKm) {
-        return photoMapper.findNearby(lat, lng, radiusKm);
+    public List<NearbyPhotoResponse> findNearby(double lat, double lng, double radiusKm,
+                                                 String startDate, String endDate) {
+        return photoMapper.findNearby(lat, lng, radiusKm, startDate, endDate);
     }
 
     @Override

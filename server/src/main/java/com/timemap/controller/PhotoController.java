@@ -38,8 +38,11 @@ public class PhotoController {
     public Result<List<NearbyPhotoResponse>> nearby(
             @RequestParam("latitude") double latitude,
             @RequestParam("longitude") double longitude,
-            @RequestParam(value = "radius", defaultValue = "10") double radius) {
-        List<NearbyPhotoResponse> list = photoService.findNearby(latitude, longitude, radius);
+            @RequestParam(value = "radius", defaultValue = "10") double radius,
+            @RequestParam(value = "startDate", required = false) String startDate,
+            @RequestParam(value = "endDate", required = false) String endDate) {
+        List<NearbyPhotoResponse> list = photoService.findNearby(
+                latitude, longitude, radius, startDate, endDate);
         return Result.ok(list);
     }
 

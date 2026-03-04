@@ -1,6 +1,7 @@
 App({
   globalData: {
     baseUrl: 'http://localhost:8080/api',
+    mapKey: 'HXKBZ-VM7L5-E4TII-ITIGH-2TYAV-BJFYS',
     token: '',
     userInfo: null
   },

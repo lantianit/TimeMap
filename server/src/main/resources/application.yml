@@ -34,3 +34,7 @@ wechat:
 jwt:
   secret: ${JWT_SECRET:timemap-dev-secret-key-change-in-production}
   expiration: 604800000  # 7天
+
+# 腾讯地图配置
+tencent-map:
+  key: ${TENCENT_MAP_KEY:}

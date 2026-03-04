@@ -1,18 +1,27 @@
 const { request, uploadFile, checkLogin } = require('../../utils/request');
+const QQMapWX = require('../../utils/qqmap-wx-jssdk.min.js');
+const app = getApp();
 
 const TEMP_MARKER_ID = 99999;
 
 Page({
   data: {
-    latitude: 39.908823,
-    longitude: 116.397470,
+    latitude: 30.5554,
+    longitude: 114.3162,
     markers: [],
     scale: 14,
+    // 时光筛选（优化点1）
+    filterLabel: '全部时间',
+    showFilterPanel: false,
+    filterStartDate: '',
+    filterEndDate: '',
+    // 定位状态（优化点2）
+    hasLocation: false,
     // 底部操作栏
     showActionBar: false,
     tapLat: 0,
     tapLng: 0,
-    tapLocationName: '定位中...',
+    tapLocationName: '',
     uploadDate: '',
     uploadDateDisplay: '今天',
     // 上传状态
@@ -27,6 +36,8 @@ Page({
     this._loadTimer = null;
     this._historyMarkers = [];
     this._photoIdMap = {};
+    this._qqmapsdk = new QQMapWX({ key: app.globalData.mapKey });
+
     const today = this._formatDate(new Date());
     this.setData({ uploadDate: today, uploadDateDisplay: '今天' });
     this.getCurrentLocation();
@@ -36,13 +47,21 @@ Page({
     this.debouncedLoadPhotos();
   },
 
+  // ========== 定位（优化点2） ==========
+
   getCurrentLocation() {
     wx.getLocation({
       type: 'gcj02',
       success: (res) => {
-        this.setData({ latitude: res.latitude, longitude: res.longitude });
+        this.setData({
+          latitude: res.latitude,
+          longitude: res.longitude,
+          hasLocation: true
+        });
         this._currentLat = res.latitude;
         this._currentLng = res.longitude;
+        this._userLat = res.latitude;
+        this._userLng = res.longitude;
         this.debouncedLoadPhotos();
       },
       fail: () => {
@@ -50,6 +69,56 @@ Page({
       }
     });
   },
+
+  /** 一键回到当前位置 */
+  onLocateTap() {
+    if (!this.data.hasLocation) {
+      this.getCurrentLocation();
+      return;
+    }
+    this.mapCtx.moveToLocation({
+      latitude: this._userLat,
+      longitude: this._userLng
+    });
+  },
+
+  // ========== 时光筛选（优化点1） ==========
+
+  onFilterTap() {
+    this.setData({ showFilterPanel: !this.data.showFilterPanel });
+  },
+
+  onFilterStartChange(e) {
+    this.setData({ filterStartDate: e.detail.value });
+  },
+
+  onFilterEndChange(e) {
+    this.setData({ filterEndDate: e.detail.value });
+  },
+
+  onFilterConfirm() {
+    const { filterStartDate, filterEndDate } = this.data;
+    let label = '全部时间';
+    if (filterStartDate && filterEndDate) {
+      label = filterStartDate + ' ~ ' + filterEndDate;
+    } else if (filterStartDate) {
+      label = filterStartDate + ' 起';
+    } else if (filterEndDate) {
+      label = '至 ' + filterEndDate;
+    }
+    this.setData({ filterLabel: label, showFilterPanel: false });
+    this.loadNearbyPhotos();
+  },
+
+  onFilterReset() {
+    this.setData({
+      filterStartDate: '', filterEndDate: '',
+      filterLabel: '全部时间', showFilterPanel: false
+    });
+    this.loadNearbyPhotos();
+  },
+
+  // ========== 加载照片标记 ==========
 
   debouncedLoadPhotos() {
     if (this._loadTimer) clearTimeout(this._loadTimer);
@@ -61,26 +130,51 @@ Page({
     this._loading = true;
     const latitude = this._currentLat || this.data.latitude;
     const longitude = this._currentLng || this.data.longitude;
-    request('/photo/nearby', 'GET', { latitude, longitude, radius: 10 })
+    const params = { latitude, longitude, radius: 10 };
+
+    // 时光筛选参数
+    if (this.data.filterStartDate) params.startDate = this.data.filterStartDate;
+    if (this.data.filterEndDate) params.endDate = this.data.filterEndDate;
+
+    request('/photo/nearby', 'GET', params)
       .then((res) => {
         const photos = res.data || [];
         this._photoIdMap = {};
-        this._historyMarkers = photos.map((item, index) => {
-          const markerId = index + 1;
-          this._photoIdMap[markerId] = item.id;
-          return {
-            id: markerId,
-            latitude: item.latitude,
-            longitude: item.longitude,
+
+        // 按位置聚合（精度4位小数）（优化点4）
+        const groups = {};
+        photos.forEach((item) => {
+          const key = item.latitude.toFixed(4) + ',' + item.longitude.toFixed(4);
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(item);
+        });
+
+        let markerId = 1;
+        this._historyMarkers = [];
+        Object.keys(groups).forEach((key) => {
+          const group = groups[key];
+          const first = group[0];
+          const id = markerId++;
+          this._photoIdMap[id] = first.id;
+
+          let content = first.locationName || first.photoDate || '照片';
+          if (group.length > 1) {
+            content = content + '（' + group.length + '张）';
+          }
+
+          this._historyMarkers.push({
+            id: id,
+            latitude: first.latitude,
+            longitude: first.longitude,
             iconPath: '/images/marker-photo.png',
             width: 36, height: 36,
             callout: {
-              content: item.locationName || item.photoDate || '照片',
-              color: '#333333', fontSize: 12, borderRadius: 8,
+              content: content,
+              color: '#333', fontSize: 12, borderRadius: 8,
               padding: 6, display: 'BYCLICK',
-              bgColor: '#ffffff', borderWidth: 1, borderColor: '#e0e0e0'
+              bgColor: '#fff', borderWidth: 1, borderColor: '#e0e0e0'
             }
-          };
+          });
         });
         this._rebuildMarkers();
       })
@@ -88,10 +182,15 @@ Page({
       .finally(() => { this._loading = false; });
   },
 
-  // ========== 地图选点交互 ==========
+  // ========== 地图选点（优化点5） ==========
 
   onMapTap(e) {
     if (this.data.uploading) return;
+    // 关闭筛选面板
+    if (this.data.showFilterPanel) {
+      this.setData({ showFilterPanel: false });
+      return;
+    }
     let lat, lng;
     if (e.detail && e.detail.latitude !== undefined) {
       lat = e.detail.latitude;
@@ -101,15 +200,31 @@ Page({
     }
     this.setData({
       tapLat: lat, tapLng: lng,
-      showActionBar: true, tapLocationName: '定位中...'
+      showActionBar: true, tapLocationName: '获取地址中...'
     });
     this._rebuildMarkers();
     this._reverseGeocode(lat, lng);
+    this._showToast('已选上传位置');
   },
 
+  /** 逆地理编码（优化点3） */
   _reverseGeocode(lat, lng) {
-    this.setData({
-      tapLocationName: '纬度' + lat.toFixed(4) + ' 经度' + lng.toFixed(4)
+    this._qqmapsdk.reverseGeocoder({
+      location: { latitude: lat, longitude: lng },
+      success: (res) => {
+        console.log('[Map] 逆地理编码成功', res);
+        const addr = res.result;
+        const name = addr.formatted_addresses
+          ? addr.formatted_addresses.recommend
+          : addr.address;
+        this.setData({ tapLocationName: name || addr.address });
+      },
+      fail: (err) => {
+        console.error('[Map] 逆地理编码失败', err);
+        this.setData({
+          tapLocationName: lat.toFixed(4) + ', ' + lng.toFixed(4)
+        });
+      }
     });
   },
 
@@ -125,7 +240,7 @@ Page({
         callout: {
           content: '上传位置', color: '#07c160', fontSize: 13,
           borderRadius: 8, padding: 6, display: 'ALWAYS',
-          bgColor: '#ffffff', borderWidth: 1, borderColor: '#07c160'
+          bgColor: '#fff', borderWidth: 1, borderColor: '#07c160'
         }
       });
     }
@@ -163,7 +278,7 @@ Page({
 
   _doUpload(filePath, lat, lng, photoDate, locationName) {
     this.setData({ uploading: true, showActionBar: false });
-    this._showToast('正在上传【' + photoDate + '】' + (locationName || '') + '的照片…');
+    this._showToast('正在上传…');
 
     uploadFile('/photo/upload', filePath, {
       longitude: String(lng), latitude: String(lat),
@@ -217,6 +332,6 @@ Page({
   _showToast(msg) {
     this.setData({ uploadToast: msg, showToast: true });
     if (this._toastTimer) clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => { this.setData({ showToast: false }); }, 3000);
+    this._toastTimer = setTimeout(() => { this.setData({ showToast: false }); }, 2500);
   }
 });
