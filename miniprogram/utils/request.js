@@ -17,13 +17,50 @@ function request(url, method, data) {
         if (res.data.code === 200) {
           resolve(res.data);
         } else if (res.data.code === 401) {
-          // Token 过期或无效，清除缓存，提示登录
+          // 未登录状态访问公开接口，静默 reject
+          if (!app.globalData.token) {
+            reject(res.data);
+            return;
+          }
           app.logout();
           wx.showToast({ title: '请先登录', icon: 'none' });
           wx.switchTab({ url: '/pages/profile/profile' });
           reject(res.data);
         } else {
           reject(res.data);
+        }
+      },
+      fail(err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+/**
+ * 封装 wx.uploadFile，自动携带 Token
+ */
+function uploadFile(url, filePath, formData) {
+  return new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: `${app.globalData.baseUrl}${url}`,
+      filePath: filePath,
+      name: 'file',
+      formData: formData || {},
+      header: {
+        'Authorization': app.globalData.token ? `Bearer ${app.globalData.token}` : ''
+      },
+      success(res) {
+        const data = JSON.parse(res.data);
+        if (data.code === 200) {
+          resolve(data);
+        } else if (data.code === 401) {
+          app.logout();
+          wx.showToast({ title: '请先登录', icon: 'none' });
+          wx.switchTab({ url: '/pages/profile/profile' });
+          reject(data);
+        } else {
+          reject(data);
         }
       },
       fail(err) {
@@ -45,4 +82,4 @@ function checkLogin() {
   return true;
 }
 
-module.exports = { request, checkLogin };
+module.exports = { request, uploadFile, checkLogin };

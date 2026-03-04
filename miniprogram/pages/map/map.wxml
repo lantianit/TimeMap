@@ -1,27 +1,44 @@
-<!-- 地图主页 -->
 <view class="container">
-  <map
-    id="map"
-    class="map"
-    latitude="{{latitude}}"
-    longitude="{{longitude}}"
-    scale="{{scale}}"
-    markers="{{markers}}"
-    show-location
-    bindmarkertap="onMarkerTap"
-  />
-
-  <!-- 时间筛选轴 -->
-  <view class="time-bar">
-    <picker mode="date" value="{{selectedDate}}" bindchange="onDateChange">
-      <view class="date-picker">
-        {{selectedDate || '选择日期'}}
-      </view>
-    </picker>
+  <!-- 顶部轻提示 -->
+  <view class="top-toast {{showToast ? 'show' : ''}}">
+    <text>{{uploadToast}}</text>
   </view>
 
-  <!-- 上传按钮 -->
-  <view class="upload-btn" bindtap="goUpload">
-    <text>+</text>
+  <!-- 地图 -->
+  <map
+    id="map" class="map"
+    latitude="{{latitude}}" longitude="{{longitude}}"
+    scale="{{scale}}" markers="{{markers}}"
+    show-location
+    bindtap="onMapTap"
+    bindmarkertap="onMarkerTap"
+    bindregionchange="onRegionChange"
+  />
+
+  <!-- 底部操作栏 -->
+  <view class="action-bar {{showActionBar ? 'show' : ''}}">
+    <view class="action-bar-inner">
+      <view class="action-location">
+        <view class="location-icon">📍</view>
+        <view class="location-text">{{tapLocationName}}</view>
+      </view>
+      <picker mode="date" value="{{uploadDate}}" bindchange="onUploadDateChange">
+        <view class="action-date">
+          <view class="date-icon">📅</view>
+          <view class="date-text">{{uploadDateDisplay}}</view>
+        </view>
+      </picker>
+      <view class="action-buttons">
+        <view class="btn-cancel" bindtap="onCancelTap">取消</view>
+        <view class="btn-upload {{uploading ? 'disabled' : ''}}" bindtap="onGoUpload">
+          {{uploading ? '上传中' : '去上传'}}
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部提示 -->
+  <view class="hint-bar" wx:if="{{!showActionBar && !uploading}}">
+    <text>点击地图选择上传位置</text>
   </view>
 </view>
