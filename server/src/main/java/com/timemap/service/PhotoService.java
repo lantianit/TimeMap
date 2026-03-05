@@ -19,4 +19,6 @@ public interface PhotoService extends IService<Photo> {
                                          String startDate, String endDate);
 
     PhotoDetailResponse getDetail(Long id);
+
+    List<PhotoDetailResponse> getBatchDetail(String ids);
 }

@@ -4,14 +4,24 @@ const app = getApp();
 
 const TEMP_MARKER_ID = 99999;
 const YEARS = [];
-for (let y = 2015; y <= 2026; y++) YEARS.push(y);
-const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const ITEM_WIDTH = 120; // rpx
+const _currentYear = new Date().getFullYear();
+for (let y = 1900; y <= _currentYear; y++) YEARS.push(y);
 
 function buildDays(year, month) {
   const count = new Date(year, month, 0).getDate();
+  const now = new Date();
+  const maxDay = (year === now.getFullYear() && month === now.getMonth() + 1)
+    ? now.getDate() : count;
   const arr = [];
-  for (let d = 1; d <= count; d++) arr.push(d);
+  for (let d = 1; d <= maxDay; d++) arr.push(d);
+  return arr;
+}
+
+function buildMonths(year) {
+  const now = new Date();
+  const max = (year === now.getFullYear()) ? now.getMonth() + 1 : 12;
+  const arr = [];
+  for (let m = 1; m <= max; m++) arr.push(m);
   return arr;
 }
 
@@ -30,7 +40,7 @@ Page({
     rangeStart: '',
     rangeEnd: '',
     years: YEARS,
-    months: MONTHS,
+    months: buildMonths(new Date().getFullYear()),
     selectedYear: new Date().getFullYear(),
     selectedMonth: new Date().getMonth() + 1,
     selectedDay: new Date().getDate(),
@@ -41,84 +51,225 @@ Page({
     // 定位状态
     hasLocation: false,
     districtName: '',
-    // 底部操作栏
-    showActionBar: false,
+    // 上传相关
+    showHidePhotosBar: false,
+    showUploadBar: false,
     tapLat: 0,
     tapLng: 0,
     tapLocationName: '',
     uploadDate: '',
     uploadDateDisplay: '今天',
+    selectedImages: [],
     // 上传状态
     uploading: false,
+    uploadProgress: 0,
     uploadToast: '',
-    showToast: false
+    showToast: false,
+    // 加载状态
+    loadingPhotos: false,
+    // 空状态
+    emptyState: false,
+    // 照片显隐
+    photosHidden: false,
+    // 定位按钮显隐
+    showLocateBtn: false,
+    // 临时标记预览图
+    tempPreviewImage: ''
   },
 
   onLoad() {
     this.mapCtx = wx.createMapContext('map');
     this._loading = false;
     this._loadTimer = null;
+    this._loadSeq = 0;
     this._historyMarkers = [];
     this._photoIdMap = {};
+    this._photoUrlMap = {};
     this._qqmapsdk = new QQMapWX({ key: app.globalData.mapKey });
-    this._yearScrollTimer = null;
-    this._monthScrollTimer = null;
-    this._dayScrollTimer = null;
-
-    const sysInfo = wx.getWindowInfo();
-    this._rpxRatio = sysInfo.windowWidth / 750;
-    this._itemPx = ITEM_WIDTH * this._rpxRatio;
-    this._halfScreen = sysInfo.windowWidth / 2;
 
     const today = this._formatDate(new Date());
     this.setData({ uploadDate: today, uploadDateDisplay: '今天' });
+
+    this._restoreFilterState();
     this.getCurrentLocation();
   },
 
   onShow() {
+    // 上传流程中不要重新加载照片（选照片从相册返回会触发 onShow）
+    if (this.data.showUploadBar || this.data.showHidePhotosBar) return;
+    // 从详情页等子页面返回时，照片数据没变，跳过刷新避免闪烁
+    if (this._skipNextShow) {
+      this._skipNextShow = false;
+      return;
+    }
     this.debouncedLoadPhotos();
+  },
+
+  // ========== 筛选状态持久化 ==========
+
+  _saveFilterState() {
+    const state = {
+      filterLabel: this.data.filterLabel,
+      filterActive: this.data.filterActive,
+      panelTab: this.data.panelTab,
+      rangeStart: this.data.rangeStart,
+      rangeEnd: this.data.rangeEnd,
+      selectedYear: this.data.selectedYear,
+      selectedMonth: this.data.selectedMonth,
+      selectedDay: this.data.selectedDay,
+      startDate: this._filterStartDate || '',
+      endDate: this._filterEndDate || ''
+    };
+    wx.setStorageSync('filterState', state);
+  },
+
+  _restoreFilterState() {
+    try {
+      const state = wx.getStorageSync('filterState');
+      if (state && state.filterActive) {
+        this.setData({
+          filterLabel: state.filterLabel,
+          filterActive: state.filterActive,
+          panelTab: state.panelTab,
+          rangeStart: state.rangeStart || '',
+          rangeEnd: state.rangeEnd || '',
+          selectedYear: state.selectedYear,
+          selectedMonth: state.selectedMonth,
+          selectedDay: state.selectedDay,
+          months: buildMonths(state.selectedYear),
+          days: buildDays(state.selectedYear, state.selectedMonth)
+        });
+        this._filterStartDate = state.startDate;
+        this._filterEndDate = state.endDate;
+      }
+    } catch (e) { /* ignore */ }
   },
 
   // ========== 滚轮居中计算 ==========
 
-  /** 计算让第 idx 个 item 居中的 scrollLeft（px） */
-  _centerScrollLeft(idx) {
-    // pad = halfScreen - itemPx/2
-    // item[idx] 左边缘 = pad + idx * itemPx
-    // item[idx] 中心 = pad + idx * itemPx + itemPx/2 = halfScreen + idx * itemPx
-    // 要让中心对齐视口中心(halfScreen)：scrollLeft = halfScreen + idx*itemPx - halfScreen = idx * itemPx
-    return Math.max(0, idx * this._itemPx);
+  /**
+   * 精确居中：用 SelectorQuery 测量 item 实际位置，计算 scrollLeft
+   */
+  _scrollToCenter(svClass, itemId, dataKey) {
+    const query = this.createSelectorQuery();
+    query.select(svClass).scrollOffset();
+    query.select(svClass).boundingClientRect();
+    query.select('#' + itemId).boundingClientRect();
+    query.exec((res) => {
+      if (!res[0] || !res[1] || !res[2]) return;
+      const curScroll = res[0].scrollLeft;
+      const svLeft = res[1].left;
+      const svWidth = res[1].width;
+      const itemLeft = res[2].left;
+      const itemWidth = res[2].width;
+      const target = curScroll + (itemLeft + itemWidth / 2) - (svLeft + svWidth / 2);
+      this.setData({ [dataKey]: Math.max(0, target) });
+    });
   },
 
   _scrollYearTo(year) {
-    const idx = YEARS.indexOf(year);
-    if (idx < 0) return;
-    const sl = this._centerScrollLeft(idx);
-    // 微信小程序 scroll-left 相同值不会重新触发动画，加微小偏移
-    this.setData({ yearScrollLeft: sl + 0.1 });
-    setTimeout(() => { this.setData({ yearScrollLeft: sl }); }, 20);
+    this._yearGuard = true;
+    setTimeout(() => {
+      this._scrollToCenter('.wheel-scroll-year', 'year-' + year, 'yearScrollLeft');
+      setTimeout(() => { this._yearGuard = false; }, 300);
+    }, 20);
   },
 
   _scrollMonthTo(month) {
-    const idx = month - 1;
-    const sl = this._centerScrollLeft(idx);
-    this.setData({ monthScrollLeft: sl + 0.1 });
-    setTimeout(() => { this.setData({ monthScrollLeft: sl }); }, 20);
+    this._monthGuard = true;
+    setTimeout(() => {
+      this._scrollToCenter('.wheel-scroll-month', 'month-' + month, 'monthScrollLeft');
+      setTimeout(() => { this._monthGuard = false; }, 300);
+    }, 20);
   },
 
   _scrollDayTo(day) {
-    const idx = day - 1;
-    const sl = this._centerScrollLeft(idx);
-    this.setData({ dayScrollLeft: sl + 0.1 });
-    setTimeout(() => { this.setData({ dayScrollLeft: sl }); }, 20);
+    this._dayGuard = true;
+    setTimeout(() => {
+      this._scrollToCenter('.wheel-scroll-day', 'day-' + day, 'dayScrollLeft');
+      setTimeout(() => { this._dayGuard = false; }, 300);
+    }, 20);
   },
 
-  /** 根据年月重新生成日期数组，并重置选中日 */
+  /**
+   * 滚动停止后 snap：测量屏幕中心最近的 item，选中并居中
+   */
+  _snapToNearest(svClass, itemClass, callback) {
+    const query = this.createSelectorQuery();
+    query.select(svClass).boundingClientRect();
+    query.selectAll(itemClass).boundingClientRect();
+    query.exec((res) => {
+      if (!res[0] || !res[1] || !res[1].length) return;
+      const svCenter = res[0].left + res[0].width / 2;
+      let minDist = Infinity;
+      let closest = 0;
+      res[1].forEach((rect, i) => {
+        const center = rect.left + rect.width / 2;
+        const dist = Math.abs(center - svCenter);
+        if (dist < minDist) { minDist = dist; closest = i; }
+      });
+      callback(closest);
+    });
+  },
+
+  onYearScroll() {
+    if (this._yearGuard) return;
+    if (this._yearScrollTimer) clearTimeout(this._yearScrollTimer);
+    this._yearScrollTimer = setTimeout(() => {
+      this._snapToNearest('.wheel-scroll-year', '.year-item', (idx) => {
+        idx = Math.max(0, Math.min(idx, YEARS.length - 1));
+        if (YEARS[idx] !== this.data.selectedYear) {
+          this.setData({ selectedYear: YEARS[idx] });
+          this._updateDays(YEARS[idx], this.data.selectedMonth, false);
+        }
+        this._scrollYearTo(YEARS[idx]);
+      });
+    }, 120);
+  },
+
+  onMonthScroll() {
+    if (this._monthGuard) return;
+    if (this._monthScrollTimer) clearTimeout(this._monthScrollTimer);
+    this._monthScrollTimer = setTimeout(() => {
+      this._snapToNearest('.wheel-scroll-month', '.month-item', (idx) => {
+        const months = this.data.months;
+        idx = Math.max(0, Math.min(idx, months.length - 1));
+        if (months[idx] !== this.data.selectedMonth) {
+          this.setData({ selectedMonth: months[idx] });
+          this._updateDays(this.data.selectedYear, months[idx], false);
+        }
+        this._scrollMonthTo(months[idx]);
+      });
+    }, 120);
+  },
+
+  onDayScroll() {
+    if (this._dayGuard) return;
+    if (this._dayScrollTimer) clearTimeout(this._dayScrollTimer);
+    this._dayScrollTimer = setTimeout(() => {
+      this._snapToNearest('.wheel-scroll-day', '.day-item', (idx) => {
+        const days = this.data.days;
+        idx = Math.max(0, Math.min(idx, days.length - 1));
+        if (days[idx] !== this.data.selectedDay) {
+          this.setData({ selectedDay: days[idx] });
+        }
+        this._scrollDayTo(days[idx]);
+      });
+    }, 120);
+  },
+
   _updateDays(year, month, resetDay) {
-    const days = buildDays(year, month);
+    // 更新可用月份（当前年份限制到当前月）
+    const months = buildMonths(year);
+    const clampedMonth = Math.min(month, months.length);
+    // 更新可用日期
+    const days = buildDays(year, clampedMonth);
     const day = resetDay ? 1 : Math.min(this.data.selectedDay, days.length);
-    this.setData({ days, selectedDay: day });
-    this._scrollDayTo(day);
+    this.setData({ months, days, selectedMonth: clampedMonth, selectedDay: day });
+    setTimeout(() => {
+      this._scrollMonthTo(clampedMonth);
+      this._scrollDayTo(day);
+    }, 50);
   },
 
   // ========== 定位 ==========
@@ -152,15 +303,24 @@ Page({
     }
     this.mapCtx.moveToLocation({
       latitude: this._userLat,
-      longitude: this._userLng
+      longitude: this._userLng,
+      success: () => {
+        this.setData({ showLocateBtn: false });
+      }
     });
+  },
+
+  // ========== 刷新按钮 ==========
+
+  onRefreshTap() {
+    this.loadNearbyPhotos();
+    this._showToast('已刷新');
   },
 
   // ========== 时光穿梭 ==========
 
   onFilterTap() {
     if (!this.data.showFilterPanel) {
-      // 打开面板时，如果是当天 tab 且没有快捷选项，滚动到选中项
       if (this.data.panelTab === 'day' && !this.data.activeQuick) {
         setTimeout(() => {
           this._scrollYearTo(this.data.selectedYear);
@@ -180,10 +340,7 @@ Page({
     this.setData({ showFilterPanel: false });
   },
 
-  /** Tab 切换 */
-  onTabAll() {
-    this.setData({ panelTab: 'all' });
-  },
+  onTabAll() { this.setData({ panelTab: 'all' }); },
 
   onTabDay() {
     this.setData({ panelTab: 'day' });
@@ -194,66 +351,11 @@ Page({
     }, 50);
   },
 
-  onTabRange() {
-    this.setData({ panelTab: 'range' });
-  },
+  onTabRange() { this.setData({ panelTab: 'range' }); },
 
-  /** 区间日期选择 */
-  onRangeStartChange(e) {
-    this.setData({ rangeStart: e.detail.value });
-  },
+  onRangeStartChange(e) { this.setData({ rangeStart: e.detail.value }); },
+  onRangeEndChange(e) { this.setData({ rangeEnd: e.detail.value }); },
 
-  onRangeEndChange(e) {
-    this.setData({ rangeEnd: e.detail.value });
-  },
-
-  /** 年份滚动 — 防抖吸附 */
-  onYearScroll(e) {
-    if (this._yearScrollTimer) clearTimeout(this._yearScrollTimer);
-    this._yearScrollTimer = setTimeout(() => {
-      this._snapYear(e.detail.scrollLeft);
-    }, 200);
-  },
-
-  _snapYear(scrollLeft) {
-    // item[idx] 居中时 scrollLeft = idx * itemPx
-    let idx = Math.round(scrollLeft / this._itemPx);
-    idx = Math.max(0, Math.min(idx, YEARS.length - 1));
-
-    if (YEARS[idx] !== this.data.selectedYear) {
-      this.setData({ selectedYear: YEARS[idx] });
-      this._scrollYearTo(YEARS[idx]);
-      this._updateDays(YEARS[idx], this.data.selectedMonth, false);
-    } else {
-      // 吸附回正确位置
-      this._scrollYearTo(YEARS[idx]);
-    }
-  },
-
-  /** 月份滚动 — 防抖吸附 */
-  onMonthScroll(e) {
-    if (this._monthScrollTimer) clearTimeout(this._monthScrollTimer);
-    this._monthScrollTimer = setTimeout(() => {
-      this._snapMonth(e.detail.scrollLeft);
-    }, 200);
-  },
-
-  _snapMonth(scrollLeft) {
-    let idx = Math.round(scrollLeft / this._itemPx);
-    idx = Math.max(0, Math.min(idx, MONTHS.length - 1));
-
-    if (MONTHS[idx] !== this.data.selectedMonth) {
-      this.setData({
-        selectedMonth: MONTHS[idx]
-      });
-      this._scrollMonthTo(MONTHS[idx]);
-      this._updateDays(this.data.selectedYear, MONTHS[idx], false);
-    } else {
-      this._scrollMonthTo(MONTHS[idx]);
-    }
-  },
-
-  /** 点击年份 item */
   onYearItemTap(e) {
     const year = e.currentTarget.dataset.year;
     this.setData({ selectedYear: year });
@@ -261,38 +363,13 @@ Page({
     this._updateDays(year, this.data.selectedMonth, false);
   },
 
-  /** 点击月份 item */
   onMonthItemTap(e) {
     const month = e.currentTarget.dataset.month;
-    this.setData({
-      selectedMonth: month
-    });
+    this.setData({ selectedMonth: month });
     this._scrollMonthTo(month);
     this._updateDays(this.data.selectedYear, month, false);
   },
 
-  /** 日期滚动 — 防抖吸附 */
-  onDayScroll(e) {
-    if (this._dayScrollTimer) clearTimeout(this._dayScrollTimer);
-    this._dayScrollTimer = setTimeout(() => {
-      this._snapDay(e.detail.scrollLeft);
-    }, 200);
-  },
-
-  _snapDay(scrollLeft) {
-    const days = this.data.days;
-    let idx = Math.round(scrollLeft / this._itemPx);
-    idx = Math.max(0, Math.min(idx, days.length - 1));
-
-    if (days[idx] !== this.data.selectedDay) {
-      this.setData({ selectedDay: days[idx] });
-      this._scrollDayTo(days[idx]);
-    } else {
-      this._scrollDayTo(days[idx]);
-    }
-  },
-
-  /** 点击日期 item */
   onDayItemTap(e) {
     const day = e.currentTarget.dataset.day;
     this.setData({ selectedDay: day });
@@ -308,7 +385,7 @@ Page({
     let filterActive = false;
 
     if (panelTab === 'all') {
-      // 全部时间，不传日期
+      // 全部时间
     } else if (panelTab === 'range') {
       if (rangeStart) startDate = rangeStart;
       if (rangeEnd) endDate = rangeEnd;
@@ -323,7 +400,6 @@ Page({
         filterActive = true;
       }
     } else {
-      // 回忆当天
       const m = String(selectedMonth).padStart(2, '0');
       const dd = String(selectedDay).padStart(2, '0');
       const dateStr = selectedYear + '-' + m + '-' + dd;
@@ -340,21 +416,28 @@ Page({
       filterActive: filterActive,
       showFilterPanel: false
     });
+    this._saveFilterState();
     this.loadNearbyPhotos();
   },
 
   /** 重置 */
   onFilterReset() {
     const now = new Date();
+    this._filterStartDate = '';
+    this._filterEndDate = '';
     this.setData({
       panelTab: 'day',
       rangeStart: '',
       rangeEnd: '',
+      filterLabel: '全部时间',
+      filterActive: false,
       selectedYear: now.getFullYear(),
       selectedMonth: now.getMonth() + 1,
       selectedDay: now.getDate(),
+      months: buildMonths(now.getFullYear()),
       days: buildDays(now.getFullYear(), now.getMonth() + 1)
     });
+    this._saveFilterState();
     setTimeout(() => {
       this._scrollYearTo(now.getFullYear());
       this._scrollMonthTo(now.getMonth() + 1);
@@ -362,7 +445,7 @@ Page({
     }, 50);
   },
 
-  // ========== 加载照片标记 ==========
+  // ========== 加载照片标记（含竞态处理 + 聚合） ==========
 
   debouncedLoadPhotos() {
     if (this._loadTimer) clearTimeout(this._loadTimer);
@@ -371,7 +454,11 @@ Page({
 
   loadNearbyPhotos() {
     if (this._loading) return;
+    if (this.data.photosHidden) return;
     this._loading = true;
+    const seq = ++this._loadSeq;
+    this.setData({ loadingPhotos: true });
+
     const latitude = this._currentLat || this.data.latitude;
     const longitude = this._currentLng || this.data.longitude;
     const params = { latitude, longitude, radius: 10 };
@@ -381,12 +468,18 @@ Page({
 
     request('/photo/nearby', 'GET', params)
       .then((res) => {
+        if (seq !== this._loadSeq) return;
+
         const photos = res.data || [];
         this._photoIdMap = {};
+        this._photoUrlMap = {};
+
+        const scale = this.data.scale || 14;
+        const precision = scale >= 15 ? 4 : scale >= 12 ? 3 : 2;
 
         const groups = {};
         photos.forEach((item) => {
-          const key = item.latitude.toFixed(4) + ',' + item.longitude.toFixed(4);
+          const key = item.latitude.toFixed(precision) + ',' + item.longitude.toFixed(precision);
           if (!groups[key]) groups[key] = [];
           groups[key].push(item);
         });
@@ -398,36 +491,44 @@ Page({
           const group = groups[key];
           const first = group[0];
           const id = markerId++;
-          this._photoIdMap[id] = first.id;
+          // 存储该聚合点的所有照片 id
+          this._photoIdMap[id] = group.map(p => p.id);
+          this._photoUrlMap[id] = first.imageUrl || first.thumbnailUrl || '';
 
           const thumbUrl = first.thumbnailUrl || first.imageUrl || '';
           const count = group.length;
 
           photoMarkers.push({
-            id,
-            thumbUrl,
-            count,
+            id, thumbUrl, count,
             locationName: first.locationName || ''
           });
 
           this._historyMarkers.push({
             id, latitude: first.latitude, longitude: first.longitude,
             iconPath: '/images/marker-transparent.png', width: 1, height: 1,
-            customCallout: {
-              anchorY: 0,
-              anchorX: 0,
-              display: 'ALWAYS'
-            }
+            customCallout: { anchorY: 0, anchorX: 0, display: 'ALWAYS' }
           });
         });
-        this.setData({ photoMarkers });
+
+        this.setData({
+          photoMarkers,
+          emptyState: photos.length === 0
+        });
         this._rebuildMarkers();
       })
-      .catch((err) => { console.log('加载附近照片失败', err); })
-      .finally(() => { this._loading = false; });
+      .catch((err) => {
+        if (seq !== this._loadSeq) return;
+        console.log('加载附近照片失败', err);
+      })
+      .finally(() => {
+        if (seq === this._loadSeq) {
+          this._loading = false;
+          this.setData({ loadingPhotos: false });
+        }
+      });
   },
 
-  // ========== 地图选点 ==========
+  // ========== 地图点击 → 直接触发上传流程 ==========
 
   onMapTap(e) {
     if (this.data.uploading) return;
@@ -435,20 +536,69 @@ Page({
       this.setData({ showFilterPanel: false });
       return;
     }
+    // 如果已经在上传流程中，点击地图 = 重新选点
+    if (this.data.showUploadBar) {
+      let lat, lng;
+      if (e.detail && e.detail.latitude !== undefined) {
+        lat = e.detail.latitude;
+        lng = e.detail.longitude;
+      } else { return; }
+      this.setData({ tapLat: lat, tapLng: lng, tapLocationName: '获取地址中...' });
+      this._rebuildMarkers();
+      this._reverseGeocode(lat, lng);
+      return;
+    }
+
+    // 需要登录
+    if (!checkLogin()) return;
+
     let lat, lng;
     if (e.detail && e.detail.latitude !== undefined) {
       lat = e.detail.latitude;
       lng = e.detail.longitude;
-    } else {
-      return;
-    }
+    } else { return; }
+
+    const today = this._formatDate(new Date());
+    const hasVisiblePhotos = this.data.photoMarkers.length > 0 && !this.data.photosHidden;
     this.setData({
       tapLat: lat, tapLng: lng,
-      showActionBar: true, tapLocationName: '获取地址中...'
+      tapLocationName: '获取地址中...',
+      uploadDate: today,
+      uploadDateDisplay: '今天',
+      selectedImages: [],
+      showHidePhotosBar: hasVisiblePhotos,
+      showUploadBar: true
     });
+    // setData 之后再 rebuild，确保条件判断正确
     this._rebuildMarkers();
     this._reverseGeocode(lat, lng);
-    this._showToast('已选上传位置');
+  },
+
+  /** 隐藏照片提示条 → 确认隐藏 */
+  onHidePhotosConfirm() {
+    this._historyMarkers = [];
+    this.setData({
+      photosHidden: true, photoMarkers: [],
+      showHidePhotosBar: false
+    });
+    this._rebuildMarkers();
+  },
+
+  /** 隐藏照片提示条 → 不用了 */
+  onHidePhotosCancel() {
+    this.setData({ showHidePhotosBar: false });
+  },
+
+  /** 取消上传（关闭上传悬浮条） */
+  onCancelUpload() {
+    this.setData({
+      showUploadBar: false,
+      showHidePhotosBar: false,
+      tapLat: 0, tapLng: 0,
+      tapLocationName: '',
+      selectedImages: []
+    });
+    this._rebuildMarkers();
   },
 
   _reverseGeocode(lat, lng) {
@@ -472,24 +622,42 @@ Page({
 
   _rebuildMarkers() {
     let markers = [...(this._historyMarkers || [])];
-    if (this.data.showActionBar && this.data.tapLat) {
-      markers.push({
-        id: TEMP_MARKER_ID,
-        latitude: this.data.tapLat,
-        longitude: this.data.tapLng,
-        iconPath: '/images/marker-temp.png',
-        width: 44, height: 44,
-        callout: {
-          content: '上传位置', color: '#07c160', fontSize: 13,
-          borderRadius: 8, padding: 6, display: 'ALWAYS',
-          bgColor: '#fff', borderWidth: 1, borderColor: '#07c160'
-        }
-      });
+    if (this.data.tapLat && (this.data.showUploadBar || this.data.showHidePhotosBar)) {
+      const hasImages = this.data.selectedImages.length > 0;
+      if (hasImages) {
+        // 有照片时用 customCallout 展示缩略图（和照片标记同样方式）
+        markers.push({
+          id: TEMP_MARKER_ID,
+          latitude: this.data.tapLat,
+          longitude: this.data.tapLng,
+          iconPath: '/images/marker-transparent.png',
+          width: 1, height: 1,
+          customCallout: { anchorY: 0, anchorX: 0, display: 'ALWAYS' }
+        });
+        this.setData({ tempPreviewImage: this.data.selectedImages[0] });
+      } else {
+        // 没选照片时用文字 callout
+        markers.push({
+          id: TEMP_MARKER_ID,
+          latitude: this.data.tapLat,
+          longitude: this.data.tapLng,
+          iconPath: '/images/marker-temp.png',
+          width: 44, height: 44,
+          callout: {
+            content: '上传位置', color: '#07c160', fontSize: 13,
+            borderRadius: 8, padding: 6, display: 'ALWAYS',
+            bgColor: '#fff', borderWidth: 1, borderColor: '#07c160'
+          }
+        });
+        this.setData({ tempPreviewImage: '' });
+      }
+    } else {
+      this.setData({ tempPreviewImage: '' });
     }
     this.setData({ markers });
   },
 
-  // ========== 底部操作栏 ==========
+  // ========== 上传悬浮条操作 ==========
 
   onUploadDateChange(e) {
     const date = e.detail.value;
@@ -500,43 +668,76 @@ Page({
     });
   },
 
-  onCancelTap() {
-    this.setData({ showActionBar: false, tapLat: 0, tapLng: 0, tapLocationName: '' });
-    this._rebuildMarkers();
-  },
-
-  onGoUpload() {
-    if (!checkLogin()) return;
-    const { tapLat, tapLng, uploadDate, tapLocationName } = this.data;
-    if (!uploadDate) { this._showToast('请选择日期'); return; }
-
+  onChooseImages() {
+    const remaining = 9 - this.data.selectedImages.length;
+    if (remaining <= 0) { this._showToast('最多选择9张'); return; }
     wx.chooseMedia({
-      count: 1, mediaType: ['image'], sizeType: ['compressed'],
+      count: remaining,
+      mediaType: ['image'],
+      sizeType: ['compressed'],
       success: (res) => {
-        this._doUpload(res.tempFiles[0].tempFilePath, tapLat, tapLng, uploadDate, tapLocationName);
+        const newImages = res.tempFiles.map(f => f.tempFilePath);
+        this.setData({
+          selectedImages: [...this.data.selectedImages, ...newImages]
+        });
+        this._rebuildMarkers();
       }
     });
   },
 
-  _doUpload(filePath, lat, lng, photoDate, locationName) {
-    this.setData({ uploading: true, showActionBar: false });
-    this._showToast('正在上传…');
+  onRemoveImage(e) {
+    const idx = e.currentTarget.dataset.idx;
+    const images = [...this.data.selectedImages];
+    images.splice(idx, 1);
+    this.setData({ selectedImages: images });
+    this._rebuildMarkers();
+  },
 
-    uploadFile('/photo/upload', filePath, {
-      longitude: String(lng), latitude: String(lat),
-      photoDate: photoDate, locationName: locationName || '', description: ''
-    })
-      .then(() => {
-        this._showToast('上传成功，已加入时光地图');
-        this.setData({ tapLat: 0, tapLng: 0 });
-        this.loadNearbyPhotos();
-      })
-      .catch(() => {
-        this._showToast('上传失败，请重试');
-        this.setData({ showActionBar: true });
+  onSubmitUpload() {
+    const { tapLat, tapLng, uploadDate, tapLocationName, selectedImages } = this.data;
+    if (!selectedImages.length) { this._showToast('请先选择照片'); return; }
+    if (!uploadDate) { this._showToast('请选择日期'); return; }
+
+    this.setData({ uploading: true, uploadProgress: 0 });
+    const total = selectedImages.length;
+    let failed = 0;
+
+    const uploadNext = (idx) => {
+      if (idx >= total) {
+        const msg = failed > 0
+          ? `上传完成，${total - failed}张成功，${failed}张失败`
+          : total === 1 ? '上传成功，已加入时光地图'
+          : `${total}张照片全部上传成功`;
+        this._showToast(msg);
+        this.setData({ uploading: false, uploadProgress: 0 });
+        // 关闭上传条
+        this.setData({
+          showUploadBar: false,
+          tapLat: 0, tapLng: 0,
+          tapLocationName: '',
+          selectedImages: []
+        });
         this._rebuildMarkers();
+        // 恢复照片显示并刷新
+        if (this.data.photosHidden) {
+          this.setData({ photosHidden: false });
+        }
+        this._loading = false;
+        this.loadNearbyPhotos();
+        return;
+      }
+
+      this.setData({ uploadProgress: Math.round(((idx + 0.5) / total) * 100) });
+
+      uploadFile('/photo/upload', selectedImages[idx], {
+        longitude: String(tapLng), latitude: String(tapLat),
+        photoDate: uploadDate, locationName: tapLocationName || '', description: ''
       })
-      .finally(() => { this.setData({ uploading: false }); });
+        .catch(() => { failed++; })
+        .finally(() => { uploadNext(idx + 1); });
+    };
+
+    uploadNext(0);
   },
 
   // ========== 标记与地图事件 ==========
@@ -544,9 +745,20 @@ Page({
   onMarkerTap(e) {
     const markerId = e.markerId;
     if (markerId === TEMP_MARKER_ID) return;
-    const photoId = this._photoIdMap && this._photoIdMap[markerId];
-    if (photoId) {
-      wx.navigateTo({ url: '/pages/detail/detail?id=' + photoId });
+    const photoIds = this._photoIdMap && this._photoIdMap[markerId];
+    if (photoIds && photoIds.length) {
+      this._skipNextShow = true;
+      wx.navigateTo({ url: '/pages/detail/detail?ids=' + photoIds.join(',') });
+    }
+  },
+
+  /** 长按照片标记 → 预览大图 */
+  onCalloutLongPress(e) {
+    const markerId = e.markerId;
+    if (markerId === TEMP_MARKER_ID) return;
+    const imageUrl = this._photoUrlMap && this._photoUrlMap[markerId];
+    if (imageUrl) {
+      wx.previewImage({ current: imageUrl, urls: [imageUrl] });
     }
   },
 
@@ -557,9 +769,39 @@ Page({
           this._currentLat = res.latitude;
           this._currentLng = res.longitude;
           this._updateDistrict(res.latitude, res.longitude);
-          this.debouncedLoadPhotos();
         }
       });
+      this._checkLocateVisible();
+    }
+  },
+
+  /** 判断用户定位点是否在当前可视区域内，不在则显示定位按钮 */
+  _checkLocateVisible() {
+    if (!this._userLat || !this._userLng) return;
+    this.mapCtx.getRegion({
+      success: (res) => {
+        const { southwest, northeast } = res;
+        const inView = this._userLat >= southwest.latitude
+          && this._userLat <= northeast.latitude
+          && this._userLng >= southwest.longitude
+          && this._userLng <= northeast.longitude;
+        if (this.data.showLocateBtn !== !inView) {
+          this.setData({ showLocateBtn: !inView });
+        }
+      }
+    });
+  },
+
+  /** 切换照片显示/隐藏 */
+  onTogglePhotos() {
+    if (this.data.photosHidden) {
+      this.setData({ photosHidden: false });
+      this._loading = false;
+      this.loadNearbyPhotos();
+    } else {
+      this._historyMarkers = [];
+      this.setData({ photosHidden: true, photoMarkers: [] });
+      this._rebuildMarkers();
     }
   },
 
@@ -574,7 +816,34 @@ Page({
   },
 
   onProfileTap() {
+    this._skipNextShow = true;
     wx.navigateTo({ url: '/pages/profile/profile' });
+  },
+
+  onUploadHintTap() {
+    this._showToast('点击地图任意位置，即可在该位置上传照片');
+  },
+
+  /** 顶部区县名点击 → 选择城市/搜索 */
+  onDistrictTap() {
+    wx.chooseLocation({
+      success: (res) => {
+        if (res.latitude && res.longitude) {
+          this.setData({
+            latitude: res.latitude,
+            longitude: res.longitude
+          });
+          this._currentLat = res.latitude;
+          this._currentLng = res.longitude;
+          this._updateDistrict(res.latitude, res.longitude);
+          this.mapCtx.moveToLocation({
+            latitude: res.latitude,
+            longitude: res.longitude
+          });
+          this.debouncedLoadPhotos();
+        }
+      }
+    });
   },
 
   /** 根据经纬度更新顶部区县名 */

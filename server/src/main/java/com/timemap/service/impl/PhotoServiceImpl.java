@@ -16,7 +16,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -83,5 +86,20 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
             resp.setAvatarUrl(user.getAvatarUrl());
         }
         return resp;
+    }
+
+    @Override
+    public List<PhotoDetailResponse> getBatchDetail(String ids) {
+        return Arrays.stream(ids.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(s -> {
+                    try { return Long.parseLong(s); }
+                    catch (NumberFormatException e) { return null; }
+                })
+                .filter(Objects::nonNull)
+                .map(this::getDetail)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 }

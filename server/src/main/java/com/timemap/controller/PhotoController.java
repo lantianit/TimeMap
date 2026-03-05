@@ -54,4 +54,10 @@ public class PhotoController {
         }
         return Result.ok(photo);
     }
+
+    @GetMapping("/batch")
+    public Result<List<PhotoDetailResponse>> batch(@RequestParam("ids") String ids) {
+        List<PhotoDetailResponse> list = photoService.getBatchDetail(ids);
+        return Result.ok(list);
+    }
 }

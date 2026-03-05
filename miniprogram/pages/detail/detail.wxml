@@ -1,7 +1,16 @@
-<!-- 图片详情页 -->
 <view class="container">
-  <image class="photo" src="{{photo.imageUrl}}" mode="widthFix" bindtap="previewImage" />
+  <!-- 照片轮播 -->
+  <view class="photo-area">
+    <swiper class="photo-swiper" current="{{current}}" bindchange="onSwiperChange"
+      indicator-dots="{{total > 1}}" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#fff">
+      <swiper-item wx:for="{{photos}}" wx:key="id">
+        <image class="photo" src="{{item.imageUrl}}" mode="aspectFill" bindtap="previewImage" />
+      </swiper-item>
+    </swiper>
+    <view class="photo-counter" wx:if="{{total > 1}}">{{current + 1}} / {{total}}</view>
+  </view>
 
+  <!-- 信息卡片 -->
   <view class="info-card">
     <view class="info-row">
       <text class="info-label">拍摄日期</text>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 52" width="36" height="52">
+  <defs>
+    <mask id="m">
+      <rect width="36" height="52" fill="white"/>
+      <circle cx="18" cy="18" r="5.5" fill="black"/>
+    </mask>
+  </defs>
+  <!-- 针杆 -->
+  <rect x="16" y="32" width="4" height="16" rx="2" fill="#07c160"/>
+  <!-- 圆环（中心镂空透明） -->
+  <circle cx="18" cy="18" r="16" fill="#07c160" mask="url(#m)"/>
+</svg>

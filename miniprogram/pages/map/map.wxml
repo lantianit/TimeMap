@@ -4,29 +4,104 @@
     <text>{{uploadToast}}</text>
   </view>
 
+  <!-- 加载指示条 -->
+  <view class="loading-bar {{loadingPhotos ? 'show' : ''}}"></view>
+
   <!-- 顶部居中：区县名卡片 -->
-  <view class="top-district-card" wx:if="{{districtName}}">
-    <text class="district-text">📍 {{districtName}}</text>
+  <view class="top-district-card" wx:if="{{districtName}}" bindtap="onDistrictTap">
+    <image class="district-icon" src="/images/icon-location.svg" />
+    <text class="district-text">{{districtName}}</text>
   </view>
 
-  <!-- 右侧工具栏 -->
+  <!-- 右侧工具栏（去掉了"+"按钮） -->
   <view class="right-toolbar">
     <view class="toolbar-btn" bindtap="onProfileTap">
-      <text class="toolbar-icon">👤</text>
+      <image class="toolbar-icon-img" src="/images/icon-user.svg" />
+    </view>
+    <view class="toolbar-btn" bindtap="onRefreshTap">
+      <image class="toolbar-icon-img" src="/images/icon-refresh.svg" />
+    </view>
+    <view class="toolbar-btn {{photosHidden ? 'toolbar-btn-off' : ''}}" bindtap="onTogglePhotos">
+      <image class="toolbar-icon-img" src="/images/icon-camera.svg" />
+      <view class="toolbar-slash" wx:if="{{photosHidden}}"></view>
+    </view>
+    <view class="toolbar-btn" bindtap="onLocateTap" wx:if="{{showLocateBtn}}">
+      <image class="toolbar-icon-img" src="/images/icon-locate.svg" />
+    </view>
+    <view class="toolbar-btn" bindtap="onUploadHintTap">
+      <image class="toolbar-icon-img" src="/images/icon-plus.svg" />
     </view>
   </view>
 
-  <!-- 时光筛选卡片（筛选生效时显示） -->
-  <view class="filter-card {{filterActive ? 'active' : ''}} {{showActionBar || showFilterPanel ? 'hidden' : ''}}" wx:if="{{filterActive}}" bindtap="onFilterTap" hover-class="filter-card-hover">
+  <!-- 隐藏照片悬浮提示条 -->
+  <view class="float-bar hide-photos-bar {{showHidePhotosBar ? 'show' : ''}}" catchtap="">
+    <image class="float-bar-icon" src="/images/icon-camera.svg" />
+    <text class="float-bar-text">其他照片遮挡上传位置？可以暂时隐藏</text>
+    <view class="float-bar-btn primary" bindtap="onHidePhotosConfirm">隐藏</view>
+    <view class="float-bar-btn" bindtap="onHidePhotosCancel">不用了</view>
+  </view>
+
+  <!-- 上传悬浮条 -->
+  <view class="upload-float {{showUploadBar ? 'show' : ''}}" catchtap="">
+    <!-- 第一行：位置 + 日期 + 取消 -->
+    <view class="upload-float-row">
+      <image class="upload-float-icon" src="/images/icon-location.svg" />
+      <text class="upload-float-addr">{{tapLocationName}}</text>
+      <picker mode="date" value="{{uploadDate}}" bindchange="onUploadDateChange">
+        <view class="upload-float-date">
+          <image class="upload-float-icon-sm" src="/images/icon-calendar.svg" />
+          <text>{{uploadDateDisplay}}</text>
+        </view>
+      </picker>
+      <view class="upload-float-close" bindtap="onCancelUpload">✕</view>
+    </view>
+    <!-- 第二行：照片选择 + 上传按钮 -->
+    <view class="upload-float-row second">
+      <scroll-view class="upload-float-images" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="upload-float-img-list">
+          <block wx:for="{{selectedImages}}" wx:key="*this">
+            <view class="upload-float-img-item">
+              <image class="upload-float-img" src="{{item}}" mode="aspectFill" />
+              <view class="upload-float-img-remove" bindtap="onRemoveImage" data-idx="{{index}}">✕</view>
+            </view>
+          </block>
+          <view class="upload-float-img-add" bindtap="onChooseImages" wx:if="{{selectedImages.length < 9}}">
+            <image class="upload-float-add-icon" src="/images/icon-plus.svg" />
+          </view>
+        </view>
+      </scroll-view>
+      <view class="upload-float-submit {{uploading || !selectedImages.length ? 'disabled' : ''}}" bindtap="onSubmitUpload">
+        {{uploading ? uploadProgress + '%' : '上传'}}
+      </view>
+    </view>
+    <!-- 上传进度 -->
+    <view class="upload-float-progress" wx:if="{{uploading}}">
+      <view class="upload-float-progress-inner" style="width: {{uploadProgress}}%"></view>
+    </view>
+  </view>
+
+  <!-- 时光筛选卡片 -->
+  <view class="filter-card {{filterActive ? 'active' : ''}} {{showUploadBar || showHidePhotosBar || showFilterPanel ? 'hidden' : ''}}" wx:if="{{filterActive}}" bindtap="onFilterTap" hover-class="filter-card-hover">
     <view class="filter-bar-indicator"></view>
     <view class="filter-content">
       <view class="filter-main-row">
-        <text class="filter-icon">🕐</text>
+        <image class="filter-icon-img" src="/images/icon-clock.svg" />
         <text class="filter-title">{{panelTab === 'day' ? '回忆当天' : panelTab === 'range' ? '回忆区间' : '全部时间'}}</text>
       </view>
       <text class="filter-sub" wx:if="{{filterLabel !== '全部时间'}}">{{filterLabel}}</text>
     </view>
     <text class="filter-arrow">▸</text>
+  </view>
+
+  <!-- 空状态引导 -->
+  <view class="empty-state" wx:if="{{emptyState && !showUploadBar && !showHidePhotosBar && !showFilterPanel && !loadingPhotos && !filterActive}}">
+    <text class="empty-text">这里还没有时光记忆</text>
+    <text class="empty-hint">点击地图任意位置，上传第一张照片</text>
+  </view>
+
+  <!-- 地图中心大头针 -->
+  <view class="center-pin">
+    <image class="pin-icon" src="/images/icon-pin.svg" />
   </view>
 
   <!-- 地图 -->
@@ -40,39 +115,44 @@
     bindcallouttap="onMarkerTap"
     bindregionchange="onRegionChange"
   >
-    <!-- 照片缩略图 customCallout -->
     <block wx:for="{{photoMarkers}}" wx:key="id">
       <cover-view slot="callout" marker-id="{{item.id}}">
         <cover-view class="photo-callout">
           <cover-view class="photo-card">
             <cover-image class="photo-thumb" src="{{item.thumbUrl}}" />
+            <cover-view class="photo-count" wx:if="{{item.count > 1}}">{{item.count}}</cover-view>
           </cover-view>
           <cover-view class="photo-arrow"></cover-view>
         </cover-view>
       </cover-view>
     </block>
+    <!-- 临时上传标记：选了照片后显示缩略图预览 -->
+    <cover-view slot="callout" marker-id="99999" wx:if="{{tempPreviewImage}}">
+      <cover-view class="photo-callout">
+        <cover-view class="photo-card temp-card">
+          <cover-image class="photo-thumb" src="{{tempPreviewImage}}" />
+          <cover-view class="photo-count temp-count" wx:if="{{selectedImages.length > 1}}">{{selectedImages.length}}</cover-view>
+        </cover-view>
+        <cover-view class="photo-arrow temp-arrow"></cover-view>
+      </cover-view>
+    </cover-view>
   </map>
 
-  <!-- 一键定位按钮 -->
-  <view class="locate-btn {{hasLocation ? '' : 'disabled'}}" bindtap="onLocateTap">
-    <view class="locate-arrow"></view>
-  </view>
-
   <!-- 悬浮底部栏 -->
-  <view class="floating-bar {{showActionBar || showFilterPanel ? 'hidden' : ''}}">
+  <view class="floating-bar {{showUploadBar || showHidePhotosBar || showFilterPanel ? 'hidden' : ''}}">
     <view class="bar-btn" bindtap="onChatTap">
       <view class="bar-icon-circle">
-        <text class="bar-icon-text">💬</text>
+        <image class="bar-icon-img" src="/images/icon-chat.svg" />
       </view>
     </view>
     <view class="bar-btn bar-btn-main" bindtap="onFilterTap">
       <view class="bar-icon-circle main">
-        <text class="bar-icon-text">🕐</text>
+        <image class="bar-icon-img main" src="/images/icon-clock.svg" />
       </view>
     </view>
     <view class="bar-btn" bindtap="onCommunityTap">
       <view class="bar-icon-circle">
-        <text class="bar-icon-text">🏠</text>
+        <image class="bar-icon-img" src="/images/icon-community.svg" />
       </view>
     </view>
   </view>
@@ -80,54 +160,43 @@
   <!-- 时光穿梭面板 -->
   <view class="filter-mask {{showFilterPanel ? 'show' : ''}}" bindtap="onMaskTap"></view>
   <view class="filter-panel {{showFilterPanel ? 'show' : ''}}">
-    <!-- 顶部标题 -->
     <view class="panel-header">
       <text class="panel-title">穿梭时光</text>
       <text class="panel-close" bindtap="onCloseFilter">✕</text>
     </view>
-
-    <!-- Tab 切换 -->
     <view class="panel-tabs">
       <view class="panel-tab {{panelTab === 'all' ? 'active' : ''}}" bindtap="onTabAll">全部时间</view>
       <view class="panel-tab {{panelTab === 'day' ? 'active' : ''}}" bindtap="onTabDay">回忆当天</view>
       <view class="panel-tab {{panelTab === 'range' ? 'active' : ''}}" bindtap="onTabRange">回忆区间</view>
     </view>
-
-    <!-- 回忆当天：滚轮 -->
     <view class="wheel-area" wx:if="{{panelTab === 'day'}}">
-      <view class="indicator-line"></view>
       <view class="fade-left"></view>
       <view class="fade-right"></view>
-
       <view class="wheel-label">年份</view>
-      <scroll-view class="wheel-scroll" scroll-x scroll-left="{{yearScrollLeft}}" scroll-with-animation enhanced show-scrollbar="{{false}}" bindscroll="onYearScroll">
+      <scroll-view class="wheel-scroll wheel-scroll-year" scroll-x scroll-left="{{yearScrollLeft}}" scroll-with-animation enhanced show-scrollbar="{{false}}" bindscroll="onYearScroll">
         <view class="wheel-track">
           <view class="wheel-pad"></view>
-          <view wx:for="{{years}}" wx:key="*this" class="wheel-item year-item {{item === selectedYear ? 'selected' : (item === selectedYear - 1 || item === selectedYear + 1) ? 'adjacent' : 'far'}}" bindtap="onYearItemTap" data-year="{{item}}">{{item}}</view>
+          <view wx:for="{{years}}" wx:key="*this" id="year-{{item}}" class="wheel-item year-item {{item === selectedYear ? 'selected' : (item === selectedYear - 1 || item === selectedYear + 1) ? 'adjacent' : 'far'}}" bindtap="onYearItemTap" data-year="{{item}}">{{item}}</view>
           <view class="wheel-pad"></view>
         </view>
       </scroll-view>
-
       <view class="wheel-label">月份</view>
-      <scroll-view class="wheel-scroll" scroll-x scroll-left="{{monthScrollLeft}}" scroll-with-animation enhanced show-scrollbar="{{false}}" bindscroll="onMonthScroll">
+      <scroll-view class="wheel-scroll wheel-scroll-month" scroll-x scroll-left="{{monthScrollLeft}}" scroll-with-animation enhanced show-scrollbar="{{false}}" bindscroll="onMonthScroll">
         <view class="wheel-track">
           <view class="wheel-pad"></view>
-          <view wx:for="{{months}}" wx:key="*this" class="wheel-item month-item {{item === selectedMonth ? 'selected' : (item === selectedMonth - 1 || item === selectedMonth + 1) ? 'adjacent' : 'far'}}" bindtap="onMonthItemTap" data-month="{{item}}">{{item}}月</view>
+          <view wx:for="{{months}}" wx:key="*this" id="month-{{item}}" class="wheel-item month-item {{item === selectedMonth ? 'selected' : (item === selectedMonth - 1 || item === selectedMonth + 1) ? 'adjacent' : 'far'}}" bindtap="onMonthItemTap" data-month="{{item}}">{{item}}月</view>
           <view class="wheel-pad"></view>
         </view>
       </scroll-view>
-
       <view class="wheel-label">日期</view>
-      <scroll-view class="wheel-scroll" scroll-x scroll-left="{{dayScrollLeft}}" scroll-with-animation enhanced show-scrollbar="{{false}}" bindscroll="onDayScroll">
+      <scroll-view class="wheel-scroll wheel-scroll-day" scroll-x scroll-left="{{dayScrollLeft}}" scroll-with-animation enhanced show-scrollbar="{{false}}" bindscroll="onDayScroll">
         <view class="wheel-track">
           <view class="wheel-pad"></view>
-          <view wx:for="{{days}}" wx:key="*this" class="wheel-item day-item {{item === selectedDay ? 'selected' : (item === selectedDay - 1 || item === selectedDay + 1) ? 'adjacent' : 'far'}}" bindtap="onDayItemTap" data-day="{{item}}">{{item}}日</view>
+          <view wx:for="{{days}}" wx:key="*this" id="day-{{item}}" class="wheel-item day-item {{item === selectedDay ? 'selected' : (item === selectedDay - 1 || item === selectedDay + 1) ? 'adjacent' : 'far'}}" bindtap="onDayItemTap" data-day="{{item}}">{{item}}日</view>
           <view class="wheel-pad"></view>
         </view>
       </scroll-view>
     </view>
-
-    <!-- 回忆区间：起止日期 -->
     <view class="range-area" wx:if="{{panelTab === 'range'}}">
       <view class="range-row">
         <text class="range-label">开始日期</text>
@@ -142,31 +211,9 @@
         </picker>
       </view>
     </view>
-
-    <!-- 底部操作按钮 -->
     <view class="panel-actions">
       <view class="panel-reset" bindtap="onFilterReset">重置</view>
       <view class="panel-confirm" bindtap="onFilterConfirm">确认穿梭</view>
-    </view>
-  </view>
-
-  <!-- 底部操作栏（选点上传） -->
-  <view class="action-bar {{showActionBar ? 'show' : ''}}">
-    <view class="action-bar-inner">
-      <view class="action-location">
-        <text class="location-text">{{tapLocationName}}</text>
-      </view>
-      <picker mode="date" value="{{uploadDate}}" bindchange="onUploadDateChange">
-        <view class="action-date">
-          <text class="date-text">{{uploadDateDisplay}}</text>
-        </view>
-      </picker>
-      <view class="action-buttons">
-        <view class="btn-cancel" bindtap="onCancelTap">取消</view>
-        <view class="btn-upload {{uploading ? 'disabled' : ''}}" bindtap="onGoUpload">
-          {{uploading ? '上传中' : '去上传'}}
-        </view>
-      </view>
     </view>
   </view>
 </view>
