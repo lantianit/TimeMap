@@ -80,7 +80,9 @@ Page({
     showFocusMarker: false,
     // 区域统计
     areaTotal: 0,
-    areaToday: 0
+    areaToday: 0,
+    areaTodayUsers: 0,
+    areaFilterUsers: 0
   },
 
   onLoad(options) {
@@ -119,6 +121,8 @@ Page({
         zIndex: 999,
         customCallout: { anchorY: 0, anchorX: 0, display: 'ALWAYS' }
       };
+      this._focusLat = lat;
+      this._focusLng = lng;
       this._updateDistrict(lat, lng);
       this.loadNearbyPhotos();
       return;
@@ -520,7 +524,17 @@ Page({
         let markerId = 1;
         this._historyMarkers = [];
         const photoMarkers = [];
+
+        // 聚焦模式下，计算聚焦点的聚合 key，用于过滤重叠标记
+        let focusKey = null;
+        if (this.data.showFocusMarker && this._focusLat && this._focusLng) {
+          focusKey = this._focusLat.toFixed(precision) + ',' + this._focusLng.toFixed(precision);
+        }
+
         Object.keys(groups).forEach((key) => {
+          // 跳过与聚焦标记重叠的聚合组
+          if (focusKey && key === focusKey) return;
+
           const group = groups[key];
           const first = group[0];
           const id = markerId++;
@@ -531,9 +545,10 @@ Page({
           const thumbUrl = first.thumbnailUrl || first.imageUrl || '';
           const count = group.length;
           const commentCount = group.reduce((sum, p) => sum + (p.commentCount || 0), 0);
+          const likeCount = group.reduce((sum, p) => sum + (p.likeCount || 0), 0);
 
           photoMarkers.push({
-            id, thumbUrl, count, commentCount,
+            id, thumbUrl, count, commentCount, likeCount,
             locationName: first.locationName || ''
           });
 
@@ -566,10 +581,18 @@ Page({
   loadAreaStats() {
     const district = this.data.districtName || '';
     if (!district) return;
-    request('/photo/stats', 'GET', { district })
+    const params = { district };
+    if (this._filterStartDate) params.startDate = this._filterStartDate;
+    if (this._filterEndDate) params.endDate = this._filterEndDate;
+    request('/photo/stats', 'GET', params)
       .then(res => {
         const data = res.data || {};
-        this.setData({ areaTotal: data.total || 0, areaToday: data.today || 0 });
+        this.setData({
+          areaTotal: data.total || 0,
+          areaToday: data.today || 0,
+          areaTodayUsers: data.todayUsers || 0,
+          areaFilterUsers: data.users || 0
+        });
       })
       .catch(() => {});
   },

@@ -9,9 +9,23 @@
 
   <!-- 顶部居中：区县名卡片 -->
   <view class="top-district-card" wx:if="{{districtName}}" bindtap="onDistrictTap">
-    <image class="district-icon" src="/images/icon-location.svg" />
-    <text class="district-text">{{districtName}}</text>
-    <text class="district-stats" wx:if="{{areaTotal > 0}}">{{areaTotal}}张{{areaToday > 0 ? ' · 今日+' + areaToday : ''}}</text>
+    <view class="district-row">
+      <image class="district-icon" src="/images/icon-location.svg" />
+      <text class="district-text">{{districtName}}</text>
+    </view>
+    <!-- 筛选模式 -->
+    <view class="district-stats-row" wx:if="{{filterActive && areaTotal > 0}}">
+      <text class="district-stats-line">{{filterLabel}} · {{areaFilterUsers}} 人拍摄了 {{areaTotal}} 张</text>
+    </view>
+    <view class="district-stats-row column" wx:if="{{filterActive && areaTotal === 0}}">
+      <text class="district-stats-line">{{filterLabel}}暂无照片记录</text>
+      <text class="district-stats-line hint">快来上传记录一张，大家一起分享吧</text>
+    </view>
+    <!-- 无筛选模式 -->
+    <view class="district-stats-row" wx:if="{{!filterActive && areaTotal > 0}}">
+      <text class="district-stats-line">共 {{areaTotal}} 张照片</text>
+      <text class="district-stats-line" wx:if="{{areaToday > 0}}">今日 {{areaTodayUsers}} 人拍摄 {{areaToday}} 张</text>
+    </view>
   </view>
 
   <!-- 右侧工具栏（去掉了"+"按钮） -->
@@ -128,8 +142,9 @@
         <cover-view class="photo-callout">
           <cover-view class="photo-card">
             <cover-image class="photo-thumb" src="{{item.thumbUrl}}" />
-            <cover-view class="photo-bar" wx:if="{{item.count > 1 || item.commentCount > 0}}">
+            <cover-view class="photo-bar" wx:if="{{item.count > 1 || item.commentCount > 0 || item.likeCount > 0}}">
               <cover-view class="photo-bar-comment" wx:if="{{item.commentCount > 0}}">💬 {{item.commentCount > 99 ? '99+' : item.commentCount}}</cover-view>
+              <cover-view class="photo-bar-like" wx:if="{{item.likeCount > 0}}">♥ {{item.likeCount > 99 ? '99+' : item.likeCount}}</cover-view>
               <cover-view class="photo-bar-count" wx:if="{{item.count > 1}}">{{item.count > 99 ? '99+' : item.count}}</cover-view>
             </cover-view>
           </cover-view>

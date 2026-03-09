@@ -94,8 +94,10 @@ public class PhotoController {
 
     @GetMapping("/stats")
     public Result<Map<String, Long>> stats(
-            @RequestParam("district") String district) {
-        Map<String, Long> stats = photoService.getAreaStats(district);
+            @RequestParam("district") String district,
+            @RequestParam(value = "startDate", required = false) String startDate,
+            @RequestParam(value = "endDate", required = false) String endDate) {
+        Map<String, Long> stats = photoService.getAreaStats(district, startDate, endDate);
         return Result.ok(stats);
     }
 

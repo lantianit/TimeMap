@@ -19,4 +19,6 @@ public class CommunityPhotoResponse {
     private String createTime;
     private String nickname;
     private String avatarUrl;
+    private Integer commentCount;
+    private Integer likeCount;
 }

@@ -10,11 +10,13 @@
     <view class="sort-toggle" catchtap="">
       <view class="sort-item {{sortBy === 'photoDate' ? 'active' : ''}}" catchtap="onSortToggle" data-sort="photoDate">拍摄时间</view>
       <view class="sort-item {{sortBy === 'createTime' ? 'active' : ''}}" catchtap="onSortToggle" data-sort="createTime">上传时间</view>
+      <view class="sort-item {{sortBy === 'commentCount' ? 'active' : ''}}" catchtap="onSortToggle" data-sort="commentCount">评论数</view>
+      <view class="sort-item {{sortBy === 'likeCount' ? 'active' : ''}}" catchtap="onSortToggle" data-sort="likeCount">点赞数</view>
     </view>
   </view>
 
-  <!-- 统计摘要 -->
-  <view class="stats-bar" wx:if="{{statTotal > 0}}">
+  <!-- 统计摘要（仅时间轴模式） -->
+  <view class="stats-bar" wx:if="{{statTotal > 0 && !isRankMode}}">
     <text class="stats-text">共 {{statTotal}} 张照片 · 包含 {{statDays}} 个日期 · {{statBusiestDay}}最活跃</text>
   </view>
 
@@ -27,8 +29,45 @@
     <text class="empty-text">这片区域还没有时光记忆，去上传第一张吧</text>
   </view>
 
-  <!-- 时间轴内容区 -->
-  <view class="timeline" wx:if="{{!isEmpty}}">
+  <!-- ===== 排行模式（评论数/点赞数排序） ===== -->
+  <view class="rank-list" wx:if="{{isRankMode && !isEmpty}}">
+    <view class="rank-item" wx:for="{{rankList}}" wx:key="id" bindtap="onPhotoTap" data-id="{{item.id}}">
+      <view class="rank-index-col">
+        <text class="rank-num {{item.rank <= 3 ? 'top' : ''}}">{{item.rank}}</text>
+      </view>
+      <view class="rank-card">
+        <image class="rank-image" src="{{item.thumbnailUrl || item.imageUrl}}" mode="aspectFill" lazy-load />
+        <view class="rank-info">
+          <view class="rank-user">
+            <image class="rank-avatar" src="{{item.avatarUrl || '/images/icon-user.svg'}}" />
+            <text class="rank-nickname">{{item.nickname || '匿名用户'}}</text>
+          </view>
+          <view class="rank-meta">
+            <text class="rank-location" wx:if="{{item.locationName}}">{{item.locationName}}</text>
+          </view>
+          <view class="rank-bottom">
+            <view class="rank-counts">
+              <view class="rank-badge comment" wx:if="{{item.commentCount > 0}}">
+                <text class="rank-badge-icon">💬</text>
+                <text class="rank-badge-num">{{item.commentCount}}</text>
+              </view>
+              <view class="rank-badge like" wx:if="{{item.likeCount > 0}}">
+                <text class="rank-badge-icon">♥</text>
+                <text class="rank-badge-num">{{item.likeCount}}</text>
+              </view>
+              <view class="rank-badge zero" wx:if="{{(sortBy === 'commentCount' && item.commentCount === 0) || (sortBy === 'likeCount' && item.likeCount === 0)}}">
+                <text class="rank-badge-num">{{sortBy === 'commentCount' ? '暂无评论' : '暂无点赞'}}</text>
+              </view>
+            </view>
+            <text class="rank-date">{{item.photoDate}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 时间轴内容区（仅时间轴模式） -->
+  <view class="timeline" wx:if="{{!isEmpty && !isRankMode}}">
     <block wx:for="{{groups}}" wx:key="dateKey" wx:for-index="gi">
       <view class="tl-group" id="date-{{item.dateId}}">
 
@@ -89,11 +128,11 @@
     <text>没有更多了</text>
   </view>
 
-  <!-- 时间轴展开面板遮罩 -->
-  <view class="panel-mask {{timelineExpanded ? 'show' : ''}}" bindtap="onPanelMaskTap" catchtouchmove="preventTouchMove"></view>
+  <!-- 时间轴展开面板遮罩（仅时间轴模式） -->
+  <view class="panel-mask {{timelineExpanded ? 'show' : ''}}" wx:if="{{!isRankMode}}" bindtap="onPanelMaskTap" catchtouchmove="preventTouchMove"></view>
 
-  <!-- 时间轴展开面板 -->
-  <view class="panel-drawer {{timelineExpanded ? 'show' : ''}}" catchtouchmove="onPanelTouchMove">
+  <!-- 时间轴展开面板（仅时间轴模式） -->
+  <view class="panel-drawer {{timelineExpanded ? 'show' : ''}}" wx:if="{{!isRankMode}}" catchtouchmove="onPanelTouchMove">
     <!-- 右侧轴线装饰 -->
     <view class="panel-axis-line"></view>
     <!-- 顶部渐变 -->

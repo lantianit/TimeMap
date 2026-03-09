@@ -22,8 +22,11 @@ Page({
     statTotal: 0,
     statDays: 0,
     statBusiestDay: '',
-    // 排序方式：photoDate=拍摄时间, createTime=上传时间
+    // 排序方式：photoDate=拍摄时间, createTime=上传时间, commentCount=评论数, likeCount=点赞数
     sortBy: 'photoDate',
+    // 排行模式（评论数/点赞数排序时，不按日期分组）
+    isRankMode: false,
+    rankList: [],
     // 时间轴展开面板
     timelineExpanded: false,
     panelDates: [],
@@ -76,6 +79,8 @@ Page({
     const page = refresh ? 1 : this.data.page;
     this.setData({ loading: true });
 
+    const isRankMode = this.data.sortBy === 'commentCount' || this.data.sortBy === 'likeCount';
+
     request('/photo/community', 'GET', {
       district: this._district || '',
       page: page,
@@ -87,52 +92,77 @@ Page({
       const allPhotos = refresh ? list : (this._flatList || []).concat(list);
       this._flatList = allPhotos;
 
-      const groups = this._groupByDate(allPhotos);
-      const months = this._extractMonths(groups);
-      const panelDates = this._buildPanelDates(groups);
-
-      // 计算统计摘要
-      const statTotal = allPhotos.length;
-      const statDays = groups.length;
-      let statBusiestDay = '';
-      if (groups.length > 0) {
-        let max = groups[0];
-        for (let i = 1; i < groups.length; i++) {
-          if (groups[i].photoCount > max.photoCount) max = groups[i];
-        }
-        const p = max.dateKey.split('-');
-        const userSet = {};
-        max.photos.forEach(photo => {
-          if (photo.userId) userSet[photo.userId] = true;
-        });
-        const userCount = Object.keys(userSet).length;
-        statBusiestDay = parseInt(p[1]) + '月' + parseInt(p[2]) + '日(' + userCount + '位用户共上传' + max.photoCount + '张)';
-      }
-
-      this.setData({
-        groups,
-        months,
-        panelDates,
-        statTotal,
-        statDays,
-        statBusiestDay,
-        hasMore: data.hasMore !== false,
-        isEmpty: allPhotos.length === 0,
-        page: page + 1,
-        loading: false
-      });
-
-      // 设置初始激活日期
-      if (groups.length > 0 && !this.data.activeDate) {
+      if (isRankMode) {
+        // 排行模式：不按日期分组，直接展示排行列表
+        const rankList = allPhotos.map((item, idx) => ({
+          ...item,
+          rank: idx + 1
+        }));
         this.setData({
-          activeDate: groups[0].dateKey,
-          activeMonth: months.length > 0 ? months[0].key : ''
+          isRankMode: true,
+          rankList,
+          groups: [],
+          months: [],
+          panelDates: [],
+          statTotal: 0,
+          statDays: 0,
+          statBusiestDay: '',
+          hasMore: data.hasMore !== false,
+          isEmpty: allPhotos.length === 0,
+          page: page + 1,
+          loading: false
         });
-      }
+      } else {
+        // 时间轴模式
+        const groups = this._groupByDate(allPhotos);
+        const months = this._extractMonths(groups);
+        const panelDates = this._buildPanelDates(groups);
 
-      // 清除位置缓存，下次滚动时重新查询
-      this._photoRects = null;
-      this._buildPhotoDateMap(groups);
+        // 计算统计摘要
+        const statTotal = allPhotos.length;
+        const statDays = groups.length;
+        let statBusiestDay = '';
+        if (groups.length > 0) {
+          let max = groups[0];
+          for (let i = 1; i < groups.length; i++) {
+            if (groups[i].photoCount > max.photoCount) max = groups[i];
+          }
+          const p = max.dateKey.split('-');
+          const userSet = {};
+          max.photos.forEach(photo => {
+            if (photo.userId) userSet[photo.userId] = true;
+          });
+          const userCount = Object.keys(userSet).length;
+          statBusiestDay = parseInt(p[1]) + '月' + parseInt(p[2]) + '日(' + userCount + '位用户共上传' + max.photoCount + '张)';
+        }
+
+        this.setData({
+          isRankMode: false,
+          rankList: [],
+          groups,
+          months,
+          panelDates,
+          statTotal,
+          statDays,
+          statBusiestDay,
+          hasMore: data.hasMore !== false,
+          isEmpty: allPhotos.length === 0,
+          page: page + 1,
+          loading: false
+        });
+
+        // 设置初始激活日期
+        if (groups.length > 0 && !this.data.activeDate) {
+          this.setData({
+            activeDate: groups[0].dateKey,
+            activeMonth: months.length > 0 ? months[0].key : ''
+          });
+        }
+
+        // 清除位置缓存，下次滚动时重新查询
+        this._photoRects = null;
+        this._buildPhotoDateMap(groups);
+      }
     }).catch(() => {
       this.setData({ loading: false });
     }).finally(() => {
@@ -412,6 +442,8 @@ Page({
             groups: [],
             months: [],
             panelDates: [],
+            rankList: [],
+            isRankMode: false,
             statTotal: 0,
             statDays: 0,
             statBusiestDay: '',
@@ -434,6 +466,8 @@ Page({
       groups: [],
       months: [],
       panelDates: [],
+      rankList: [],
+      isRankMode: false,
       activeDate: '',
       activePhotoId: '',
       statTotal: 0,

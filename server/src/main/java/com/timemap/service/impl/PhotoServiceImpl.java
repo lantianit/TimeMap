@@ -176,13 +176,31 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
     }
 
     @Override
-    public Map<String, Long> getAreaStats(String district) {
-        long total = photoMapper.countByDistrict(district);
-        long today = photoMapper.countTodayByDistrict(district);
-        Map<String, Long> stats = new HashMap<>();
-        stats.put("total", total);
-        stats.put("today", today);
-        return stats;
+    public Map<String, Long> getAreaStats(String district, String startDate, String endDate) {
+        boolean hasFilter = (startDate != null && !startDate.isEmpty()) || (endDate != null && !endDate.isEmpty());
+
+        if (hasFilter) {
+            // 筛选模式：按日期范围统计
+            long total = photoMapper.countByDistrictAndDate(district, startDate, endDate);
+            long users = photoMapper.countUsersByDistrictAndDate(district, startDate, endDate);
+            Map<String, Long> stats = new HashMap<>();
+            stats.put("total", total);
+            stats.put("users", users);
+            stats.put("today", 0L);
+            stats.put("todayUsers", 0L);
+            return stats;
+        } else {
+            // 无筛选：全量 + 今日
+            long total = photoMapper.countByDistrict(district);
+            long today = photoMapper.countTodayByDistrict(district);
+            long todayUsers = photoMapper.countTodayUsersByDistrict(district);
+            Map<String, Long> stats = new HashMap<>();
+            stats.put("total", total);
+            stats.put("today", today);
+            stats.put("todayUsers", todayUsers);
+            stats.put("users", 0L);
+            return stats;
+        }
     }
 
 }

@@ -18,6 +18,7 @@ public interface PhotoMapper extends BaseMapper<Photo> {
         SELECT id, image_url, thumbnail_url, longitude, latitude,
                location_name, photo_date,
                (SELECT COUNT(*) FROM t_comment WHERE photo_id = t_photo.id AND deleted = 0) AS comment_count,
+               (SELECT COUNT(*) FROM t_photo_like WHERE photo_id = t_photo.id) AS like_count,
                (6371 * 2 * ASIN(SQRT(
                    POW(SIN(RADIANS(latitude - #{lat}) / 2), 2) +
                    COS(RADIANS(#{lat})) * COS(RADIANS(latitude)) *
@@ -47,7 +48,9 @@ public interface PhotoMapper extends BaseMapper<Photo> {
     @Select("""
         <script>
         SELECT p.id, p.user_id, p.image_url, p.thumbnail_url, p.longitude, p.latitude,
-               p.location_name, p.photo_date, p.create_time, u.nickname, u.avatar_url
+               p.location_name, p.photo_date, p.create_time, u.nickname, u.avatar_url,
+               (SELECT COUNT(*) FROM t_comment c WHERE c.photo_id = p.id AND c.deleted = 0) AS comment_count,
+               (SELECT COUNT(*) FROM t_photo_like pl WHERE pl.photo_id = p.id) AS like_count
         FROM t_photo p
         LEFT JOIN t_user u ON p.user_id = u.id
         WHERE p.deleted = 0
@@ -55,7 +58,13 @@ public interface PhotoMapper extends BaseMapper<Photo> {
         <if test="sortBy == 'createTime'">
         ORDER BY p.create_time DESC, p.id DESC
         </if>
-        <if test="sortBy != 'createTime'">
+        <if test="sortBy == 'commentCount'">
+        ORDER BY comment_count DESC, p.id DESC
+        </if>
+        <if test="sortBy == 'likeCount'">
+        ORDER BY like_count DESC, p.id DESC
+        </if>
+        <if test="sortBy != 'createTime' and sortBy != 'commentCount' and sortBy != 'likeCount'">
         ORDER BY p.photo_date DESC, p.id DESC
         </if>
         LIMIT #{offset}, #{size}
@@ -109,5 +118,40 @@ public interface PhotoMapper extends BaseMapper<Photo> {
 
     @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND district = #{district} AND DATE(create_time) = CURDATE()")
     long countTodayByDistrict(@Param("district") String district);
+
+    @Select("SELECT COUNT(DISTINCT user_id) FROM t_photo WHERE deleted = 0 AND district = #{district} AND DATE(create_time) = CURDATE()")
+    long countTodayUsersByDistrict(@Param("district") String district);
+
+    @Select("""
+        <script>
+        SELECT COUNT(*) FROM t_photo
+        WHERE deleted = 0 AND district = #{district}
+          <if test="startDate != null and startDate != ''">
+            AND photo_date &gt;= #{startDate}
+          </if>
+          <if test="endDate != null and endDate != ''">
+            AND photo_date &lt;= #{endDate}
+          </if>
+        </script>
+    """)
+    long countByDistrictAndDate(@Param("district") String district,
+                                @Param("startDate") String startDate,
+                                @Param("endDate") String endDate);
+
+    @Select("""
+        <script>
+        SELECT COUNT(DISTINCT user_id) FROM t_photo
+        WHERE deleted = 0 AND district = #{district}
+          <if test="startDate != null and startDate != ''">
+            AND photo_date &gt;= #{startDate}
+          </if>
+          <if test="endDate != null and endDate != ''">
+            AND photo_date &lt;= #{endDate}
+          </if>
+        </script>
+    """)
+    long countUsersByDistrictAndDate(@Param("district") String district,
+                                     @Param("startDate") String startDate,
+                                     @Param("endDate") String endDate);
 
 }

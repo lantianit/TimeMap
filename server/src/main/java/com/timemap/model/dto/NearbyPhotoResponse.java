@@ -16,4 +16,5 @@ public class NearbyPhotoResponse {
     private String photoDate;
     private Double distance;
     private Integer commentCount;
+    private Integer likeCount;
 }
