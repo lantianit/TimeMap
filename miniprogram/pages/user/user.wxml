@@ -1,0 +1,70 @@
+<view class="user-page">
+  <!-- 用户信息卡 -->
+  <view class="user-header" wx:if="{{user}}">
+    <image class="user-avatar" src="{{user.avatarUrl || '/images/icon-user.svg'}}" mode="aspectFill" />
+    <view class="user-main">
+      <view class="user-meta">
+        <text class="user-nick">{{user.nickname || '微信用户'}}</text>
+        <text class="user-summary" wx:if="{{user.photoCount > 0}}">
+          TA 已留下 {{user.photoCount || 0}} 张照片，足迹覆盖 {{user.areaCount || 0}} 个区域
+        </text>
+        <text class="user-summary" wx:else>TA 还没有公开的拍摄记录</text>
+      </view>
+      <view class="summary-grid">
+        <view class="summary-item">
+          <text class="summary-value">{{user.photoCount || 0}}</text>
+          <text class="summary-label">照片</text>
+        </view>
+        <view class="summary-item">
+          <text class="summary-value">{{user.areaCount || 0}}</text>
+          <text class="summary-label">区域</text>
+        </view>
+        <view class="summary-item">
+          <text class="summary-value">{{user.likeCount || 0}}</text>
+          <text class="summary-label">获赞</text>
+        </view>
+      </view>
+      <view class="recent-row" wx:if="{{user.latestPhotoDate}}">
+        <text class="recent-tag">最近记录</text>
+        <text class="recent-date">{{user.latestPhotoDate}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="area-card" wx:if="{{topAreas.length}}">
+    <view class="section-head">
+      <text class="section-title">足迹亮点</text>
+      <text class="section-subtitle">按上传区域统计</text>
+    </view>
+    <view class="area-list">
+      <view class="area-item" wx:for="{{topAreas}}" wx:key="name">
+        <view class="area-item-main">
+          <text class="area-name">{{item.name}}</text>
+          <text class="area-count">{{item.count}} 张</text>
+        </view>
+        <view class="area-progress">
+          <view class="area-progress-inner" style="width: {{total ? (item.count / total * 100) : 0}}%;"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 照片列表 -->
+  <view class="section-head photo-section-head">
+    <text class="section-title">TA 的拍摄</text>
+    <text class="section-subtitle" wx:if="{{total > 0}}">共 {{total}} 张</text>
+  </view>
+  <view class="photo-grid">
+    <view class="photo-cell" wx:for="{{photos}}" wx:key="id" bindtap="onPhotoTap" data-id="{{item.id}}">
+      <image class="photo-img" src="{{item.thumbnailUrl || item.imageUrl}}" mode="aspectFill" />
+      <view class="photo-info">
+        <text class="photo-loc">{{item.locationName}}</text>
+        <text class="photo-date">{{item.photoDateLabel}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-tip" wx:if="{{!photos.length && !loading}}">该用户暂无照片</view>
+  <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
+  <view class="loading-tip" wx:if="{{!hasMore && photos.length}}">没有更多了</view>
+</view>

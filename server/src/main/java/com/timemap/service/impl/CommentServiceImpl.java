@@ -12,6 +12,8 @@ import com.timemap.model.entity.Comment;
 import com.timemap.model.entity.CommentLike;
 import com.timemap.model.entity.User;
 import com.timemap.service.CommentService;
+import com.timemap.service.NotificationService;
+import com.timemap.mapper.PhotoMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,8 @@ public class CommentServiceImpl implements CommentService {
     private final CommentMapper commentMapper;
     private final CommentLikeMapper commentLikeMapper;
     private final UserMapper userMapper;
+    private final NotificationService notificationService;
+    private final PhotoMapper photoMapper;
 
     @Override
     public CommentPageResponse getComments(Long photoId, int page, int size, Long currentUserId) {
@@ -90,6 +94,27 @@ public class CommentServiceImpl implements CommentService {
             if (parent != null) {
                 parent.setReplyCount(parent.getReplyCount() + 1);
                 commentMapper.updateById(parent);
+                // 通知父评论作者：有人回复了你的评论
+                notificationService.createNotification(
+                        parent.getUserId(), userId, "reply",
+                        req.getPhotoId(), comment.getId(), req.getContent());
+            }
+            // 如果回复了特定用户（且不是父评论作者），也通知被回复者
+            if (req.getReplyToUserId() != null && req.getReplyToUserId() != 0L) {
+                Comment parentComment = commentMapper.selectById(comment.getParentId());
+                if (parentComment == null || !req.getReplyToUserId().equals(parentComment.getUserId())) {
+                    notificationService.createNotification(
+                            req.getReplyToUserId(), userId, "reply",
+                            req.getPhotoId(), comment.getId(), req.getContent());
+                }
+            }
+        } else {
+            // 顶级评论：通知照片作者
+            com.timemap.model.entity.Photo photo = photoMapper.selectById(req.getPhotoId());
+            if (photo != null) {
+                notificationService.createNotification(
+                        photo.getUserId(), userId, "comment",
+                        req.getPhotoId(), comment.getId(), req.getContent());
             }
         }
 
@@ -142,6 +167,10 @@ public class CommentServiceImpl implements CommentService {
             commentLikeMapper.insert(cl);
             comment.setLikeCount(comment.getLikeCount() + 1);
             liked = true;
+            // 通知评论作者
+            notificationService.createNotification(
+                    comment.getUserId(), userId, "comment_like",
+                    comment.getPhotoId(), commentId, comment.getContent());
         }
         commentMapper.updateById(comment);
 

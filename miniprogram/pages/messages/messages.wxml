@@ -1,24 +1,66 @@
 <view class="messages-page">
-  <view class="conv-empty" wx:if="{{!conversations.length && !loading}}">
-    <text>暂无消息</text>
+  <!-- Tab 栏 -->
+  <view class="tab-bar">
+    <view class="tab-item {{activeTab === 'chat' ? 'active' : ''}}" bindtap="onTabChat">
+      <text>私信</text>
+      <view class="tab-badge" wx:if="{{chatUnread > 0}}">
+        <text>{{chatUnread > 99 ? '99+' : chatUnread}}</text>
+      </view>
+    </view>
+    <view class="tab-item {{activeTab === 'notification' ? 'active' : ''}}" bindtap="onTabNotification">
+      <text>互动</text>
+      <view class="tab-badge" wx:if="{{notifUnread > 0}}">
+        <text>{{notifUnread > 99 ? '99+' : notifUnread}}</text>
+      </view>
+    </view>
   </view>
 
-  <view class="conv-item" wx:for="{{conversations}}" wx:key="userId"
-    bindtap="onConversationTap" data-item="{{item}}">
-    <view class="conv-avatar-wrap">
-      <image class="conv-avatar" src="{{item.avatarUrl || '/images/icon-user.svg'}}" />
-      <view class="conv-badge" wx:if="{{item.unreadCount > 0}}">
-        <text>{{item.unreadCount > 99 ? '99+' : item.unreadCount}}</text>
+  <!-- 私信列表 -->
+  <view wx:if="{{activeTab === 'chat'}}">
+    <view class="conv-empty" wx:if="{{!conversations.length && !loading}}">
+      <text>暂无私信</text>
+    </view>
+    <view class="conv-item" wx:for="{{conversations}}" wx:key="userId"
+      bindtap="onConversationTap" data-item="{{item}}">
+      <view class="conv-avatar-wrap">
+        <image class="conv-avatar" src="{{item.avatarUrl || '/images/icon-user.svg'}}" />
+        <view class="conv-badge" wx:if="{{item.unreadCount > 0}}">
+          <text>{{item.unreadCount > 99 ? '99+' : item.unreadCount}}</text>
+        </view>
+      </view>
+      <view class="conv-body">
+        <view class="conv-top">
+          <text class="conv-nick">{{item.nickname || '用户'}}</text>
+          <text class="conv-time">{{item.timeLabel}}</text>
+        </view>
+        <text class="conv-last">{{item.lastMessage}}</text>
       </view>
     </view>
+  </view>
 
-    <view class="conv-body">
-      <view class="conv-top">
-        <text class="conv-nick">{{item.nickname || '用户'}}</text>
-        <text class="conv-time">{{item.timeLabel}}</text>
-      </view>
-      <text class="conv-last">{{item.lastMessage}}</text>
+  <!-- 互动通知列表 -->
+  <view wx:if="{{activeTab === 'notification'}}">
+    <view class="notif-read-all" wx:if="{{notifUnread > 0}}" bindtap="onReadAll">
+      <text>全部已读</text>
     </view>
+    <view class="conv-empty" wx:if="{{!notifications.length && !notifLoading}}">
+      <text>暂无互动消息</text>
+    </view>
+    <view class="notif-item {{item.isRead ? '' : 'unread'}}" wx:for="{{notifications}}" wx:key="id"
+      bindtap="onNotifTap" data-item="{{item}}">
+      <image class="notif-avatar" src="{{item.fromAvatarUrl || '/images/icon-user.svg'}}" />
+      <view class="notif-body">
+        <view class="notif-top">
+          <text class="notif-nick">{{item.fromNickname}}</text>
+          <text class="notif-action">{{item.typeLabel}}</text>
+        </view>
+        <text class="notif-content" wx:if="{{item.content}}">{{item.content}}</text>
+        <text class="notif-time">{{item.timeLabel}}</text>
+      </view>
+      <image class="notif-photo" wx:if="{{item.photoThumbnail}}" src="{{item.photoThumbnail}}" mode="aspectFill" />
+    </view>
+    <view class="conv-loading" wx:if="{{notifLoading}}"><text>加载中...</text></view>
+    <view class="conv-loading" wx:if="{{!notifHasMore && notifications.length}}"><text>没有更多了</text></view>
   </view>
 
   <view class="conv-loading" wx:if="{{loading}}"><text>加载中...</text></view>

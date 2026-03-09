@@ -231,7 +231,8 @@
   transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .float-bar.show {
-  bottom: calc(env(safe-area-inset-bottom) + 260rpx);
+  /* 置于上传面板上方，避免重叠（上传面板约 40rpx 起、高约 340rpx） */
+  bottom: calc(env(safe-area-inset-bottom) + 400rpx);
 }
 .float-bar-icon {
   width: 36rpx; height: 36rpx; flex-shrink: 0; opacity: 0.6;
@@ -261,7 +262,7 @@
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border-radius: 20rpx;
   box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.12);
-  padding: 16rpx 20rpx;
+  padding: 18rpx 22rpx;
   transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .upload-float.show {
@@ -269,10 +270,20 @@
 }
 
 .upload-float-row {
-  display: flex; align-items: center; gap: 10rpx;
+  display: flex; align-items: center; gap: 12rpx;
+  min-height: 48rpx;
+  margin-bottom: 12rpx;
 }
+.upload-float-row:last-of-type { margin-bottom: 0; }
 .upload-float-row.second {
-  margin-top: 12rpx;
+  margin-top: 4rpx;
+  margin-bottom: 0;
+}
+.upload-float-row-desc {
+  align-items: flex-start;
+}
+.upload-float-desc-wrap {
+  flex: 1; min-width: 0; display: flex; flex-direction: column;
 }
 .upload-float-icon {
   width: 28rpx; height: 28rpx; flex-shrink: 0; opacity: 0.6;
@@ -285,14 +296,15 @@
   flex-shrink: 0;
   display: flex; align-items: center; gap: 6rpx;
   font-size: 22rpx; color: #07c160;
-  background: #f0f9f0; padding: 6rpx 16rpx; border-radius: 16rpx;
+  background: #f0f9f0; padding: 10rpx 16rpx; border-radius: 16rpx;
+  min-height: 40rpx; line-height: 1.4;
 }
 .upload-float-icon-sm {
   width: 24rpx; height: 24rpx;
 }
 .upload-float-close {
   flex-shrink: 0;
-  width: 44rpx; height: 44rpx;
+  min-width: 56rpx; min-height: 56rpx;
   display: flex; align-items: center; justify-content: center;
   font-size: 28rpx; color: #999;
 }
@@ -302,8 +314,21 @@
 .upload-float-images {
   flex: 1; min-width: 0; height: 96rpx;
 }
+
+/* 描述输入（多行自适应换行） */
+.upload-float-desc {
+  flex: 1; min-height: 58rpx; max-height: 160rpx; width: 100%;
+  font-size: 24rpx; color: #333;
+  background: #f5f5f5; border-radius: 28rpx;
+  padding: 14rpx 24rpx; line-height: 1.5;
+  box-sizing: border-box;
+}
+.upload-float-desc-count {
+  font-size: 20rpx; color: #999;
+  text-align: right; margin-top: 6rpx; padding-right: 8rpx;
+}
 .upload-float-img-list {
-  display: inline-flex; gap: 12rpx; height: 96rpx; align-items: center;
+  display: inline-flex; gap: 16rpx; height: 96rpx; align-items: center;
 }
 .upload-float-img-item {
   width: 88rpx; height: 88rpx;
@@ -322,6 +347,7 @@
 }
 .upload-float-img-add {
   width: 88rpx; height: 88rpx; flex-shrink: 0;
+  min-width: 88rpx; min-height: 88rpx;
   border: 2rpx dashed #ccc; border-radius: 12rpx;
   display: flex; align-items: center; justify-content: center;
 }
@@ -331,7 +357,7 @@
 /* 上传按钮 */
 .upload-float-submit {
   flex-shrink: 0;
-  height: 64rpx; line-height: 64rpx;
+  min-height: 66rpx; height: 66rpx; line-height: 66rpx;
   padding: 0 28rpx;
   font-size: 26rpx; color: #fff; font-weight: 600;
   background: #07c160; border-radius: 32rpx;
@@ -342,7 +368,7 @@
 
 /* 上传进度条 */
 .upload-float-progress {
-  margin-top: 8rpx; height: 4rpx;
+  margin-top: 12rpx; height: 4rpx;
   background: #f0f0f0; border-radius: 2rpx;
   overflow: hidden;
 }
@@ -414,6 +440,16 @@
 }
 .bar-btn {
   display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.bar-badge {
+  position: absolute; top: -4rpx; right: -4rpx;
+  min-width: 32rpx; height: 32rpx; line-height: 32rpx;
+  background: #e74c3c; color: #fff;
+  font-size: 18rpx; font-weight: 600;
+  text-align: center; border-radius: 999rpx;
+  padding: 0 8rpx; box-sizing: border-box;
+  z-index: 10;
 }
 .bar-icon-circle {
   width: 96rpx; height: 96rpx;

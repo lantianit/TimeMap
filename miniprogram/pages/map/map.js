@@ -61,6 +61,8 @@ Page({
     todayDate: '',
     uploadDateDisplay: '今天',
     selectedImages: [],
+    uploadDesc: '',
+    uploadDescLength: 0,
     // 上传状态
     uploading: false,
     uploadProgress: 0,
@@ -82,7 +84,9 @@ Page({
     areaTotal: 0,
     areaToday: 0,
     areaTodayUsers: 0,
-    areaFilterUsers: 0
+    areaFilterUsers: 0,
+    // 未读消息
+    unreadTotal: 0
   },
 
   onLoad(options) {
@@ -132,6 +136,8 @@ Page({
   },
 
   onShow() {
+    // 每次回到地图页都刷新未读数
+    this._loadUnreadCount();
     // 上传流程中不要重新加载照片（选照片从相册返回会触发 onShow）
     if (this.data.showUploadBar || this.data.showHidePhotosBar) return;
     // 从详情页等子页面返回时，照片数据没变，跳过刷新避免闪烁
@@ -638,8 +644,11 @@ Page({
       tapLat: lat, tapLng: lng,
       tapLocationName: '获取地址中...',
       uploadDate: today,
+      todayDate: today,
       uploadDateDisplay: '今天',
       selectedImages: [],
+      uploadDesc: '',
+      uploadDescLength: 0,
       showHidePhotosBar: hasVisiblePhotos,
       showUploadBar: true
     });
@@ -670,7 +679,9 @@ Page({
       showHidePhotosBar: false,
       tapLat: 0, tapLng: 0,
       tapLocationName: '',
-      selectedImages: []
+      selectedImages: [],
+      uploadDesc: '',
+      uploadDescLength: 0
     });
     this._rebuildMarkers();
   },
@@ -767,6 +778,11 @@ Page({
     });
   },
 
+  onDescInput(e) {
+    const val = e.detail.value || '';
+    this.setData({ uploadDesc: val, uploadDescLength: val.length });
+  },
+
   onChooseImages() {
     const remaining = 9 - this.data.selectedImages.length;
     if (remaining <= 0) { this._showToast('最多选择9张'); return; }
@@ -832,7 +848,9 @@ Page({
           showUploadBar: false,
           tapLat: 0, tapLng: 0,
           tapLocationName: '',
-          selectedImages: []
+          selectedImages: [],
+          uploadDesc: '',
+          uploadDescLength: 0
         });
         this._rebuildMarkers();
         // 恢复照片显示并刷新
@@ -849,7 +867,7 @@ Page({
       uploadFile('/photo/upload', selectedImages[idx], {
         longitude: String(tapLng), latitude: String(tapLat),
         photoDate: uploadDate, locationName: tapLocationName || '',
-        district: this._tapDistrict || '', description: ''
+        district: this._tapDistrict || '', description: this.data.uploadDesc || ''
       })
         .catch(() => { failed++; })
         .finally(() => { uploadNext(idx + 1); });
@@ -927,7 +945,20 @@ Page({
   // ========== 底部悬浮栏 ==========
 
   onChatTap() {
-    this._showToast('聊天功能即将上线');
+    this._skipNextShow = true;
+    wx.navigateTo({ url: '/pages/messages/messages' });
+  },
+
+  _loadUnreadCount() {
+    if (!app.isLoggedIn()) {
+      this.setData({ unreadTotal: 0 });
+      return;
+    }
+    const p1 = request('/message/unread', 'GET').then(r => (r.data && r.data.count) || 0).catch(() => 0);
+    const p2 = request('/notification/unread', 'GET').then(r => (r.data && r.data.count) || 0).catch(() => 0);
+    Promise.all([p1, p2]).then(([msg, notif]) => {
+      this.setData({ unreadTotal: msg + notif });
+    });
   },
 
   onCommunityTap() {
@@ -950,6 +981,10 @@ Page({
 
   /** 顶部区县名点击 → 选择城市/搜索 */
   onDistrictTap() {
+    this._openLocationSearch();
+  },
+
+  _openLocationSearch() {
     wx.chooseLocation({
       success: (res) => {
         if (res.latitude && res.longitude) {

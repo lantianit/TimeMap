@@ -31,6 +31,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/photo/batch",
                         "/api/photo/community",
                         "/api/photo/stats",
+                        "/api/photo/user/**",
                         "/api/comment/list",
                         "/api/comment/replies"
                 )
@@ -46,6 +47,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/photo/batch",
                         "/api/photo/community",
                         "/api/photo/stats",
+                        "/api/photo/user/**",
                         "/api/comment/list",
                         "/api/comment/replies"
                 )

@@ -101,4 +101,36 @@ public class PhotoController {
         return Result.ok(stats);
     }
 
+    @GetMapping("/my")
+    public Result<Map<String, Object>> myPhotos(
+            @RequestAttribute("userId") Long userId,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        Map<String, Object> photos = photoService.getMyPhotos(userId, page, size);
+        com.timemap.model.dto.UserProfileResponse profile = photoService.getUserProfile(userId);
+        Map<String, Object> result = new java.util.HashMap<>(photos);
+        result.put("user", profile);
+        return Result.ok(result);
+    }
+
+    @PostMapping("/delete")
+    public Result<Void> deletePhoto(
+            @RequestParam("photoId") Long photoId,
+            @RequestAttribute("userId") Long userId) {
+        photoService.deletePhoto(photoId, userId);
+        return Result.ok();
+    }
+
+    @GetMapping("/user/{userId}")
+    public Result<Map<String, Object>> userPhotos(
+            @PathVariable Long userId,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        Map<String, Object> photos = photoService.getMyPhotos(userId, page, size);
+        com.timemap.model.dto.UserProfileResponse profile = photoService.getUserProfile(userId);
+        Map<String, Object> result = new java.util.HashMap<>(photos);
+        result.put("user", profile);
+        return Result.ok(result);
+    }
+
 }

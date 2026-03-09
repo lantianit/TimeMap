@@ -1,13 +1,15 @@
 package com.timemap.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.timemap.model.dto.CommunityPhotoResponse;
+import com.timemap.model.dto.MyPhotoResponse;
 import com.timemap.model.dto.NearbyPhotoResponse;
+import com.timemap.model.dto.UserAreaStatResponse;
 import com.timemap.model.entity.Photo;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-import com.timemap.model.dto.CommunityPhotoResponse;
 import java.util.List;
 
 @Mapper
@@ -153,5 +155,63 @@ public interface PhotoMapper extends BaseMapper<Photo> {
     long countUsersByDistrictAndDate(@Param("district") String district,
                                      @Param("startDate") String startDate,
                                      @Param("endDate") String endDate);
+
+    @Select("""
+        SELECT p.id, p.image_url, p.thumbnail_url, p.location_name, p.photo_date, p.create_time,
+               (SELECT COUNT(*) FROM t_comment c WHERE c.photo_id = p.id AND c.deleted = 0) AS comment_count,
+               (SELECT COUNT(*) FROM t_photo_like pl WHERE pl.photo_id = p.id) AS like_count
+        FROM t_photo p
+        WHERE p.deleted = 0 AND p.user_id = #{userId}
+        ORDER BY p.create_time DESC
+        LIMIT #{offset}, #{size}
+    """)
+    List<MyPhotoResponse> findMyPhotos(@Param("userId") Long userId,
+                                       @Param("offset") int offset,
+                                       @Param("size") int size);
+
+    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND user_id = #{userId}")
+    long countMyPhotos(@Param("userId") Long userId);
+
+    @Select("""
+        SELECT COUNT(DISTINCT district)
+        FROM t_photo
+        WHERE deleted = 0 AND user_id = #{userId}
+          AND district IS NOT NULL AND district != ''
+    """)
+    long countUserAreas(@Param("userId") Long userId);
+
+    @Select("""
+        SELECT IFNULL(SUM(sub.cnt), 0) FROM (
+            SELECT (SELECT COUNT(*) FROM t_photo_like WHERE photo_id = p.id) AS cnt
+            FROM t_photo p WHERE p.deleted = 0 AND p.user_id = #{userId}
+        ) sub
+    """)
+    long countUserTotalLikes(@Param("userId") Long userId);
+
+    @Select("""
+        SELECT
+          CASE
+            WHEN district IS NULL OR district = '' THEN '未标注区域'
+            ELSE district
+          END AS name,
+          COUNT(*) AS count
+        FROM t_photo
+        WHERE deleted = 0 AND user_id = #{userId}
+        GROUP BY CASE
+          WHEN district IS NULL OR district = '' THEN '未标注区域'
+          ELSE district
+        END
+        ORDER BY count DESC, name ASC
+        LIMIT #{limit}
+    """)
+    List<UserAreaStatResponse> findTopAreas(@Param("userId") Long userId,
+                                            @Param("limit") int limit);
+
+    @Select("""
+        SELECT DATE_FORMAT(MAX(COALESCE(photo_date, DATE(create_time))), '%Y-%m-%d')
+        FROM t_photo
+        WHERE deleted = 0 AND user_id = #{userId}
+    """)
+    String findLatestPhotoDate(@Param("userId") Long userId);
 
 }

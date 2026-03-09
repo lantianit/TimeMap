@@ -31,4 +31,10 @@ public interface PhotoService extends IService<Photo> {
     com.timemap.model.dto.CommunityPageResponse findCommunity(String district, int page, int size, String sortBy);
 
     Map<String, Long> getAreaStats(String district, String startDate, String endDate);
+
+    Map<String, Object> getMyPhotos(Long userId, int page, int size);
+
+    void deletePhoto(Long photoId, Long userId);
+
+    com.timemap.model.dto.UserProfileResponse getUserProfile(Long userId);
 }

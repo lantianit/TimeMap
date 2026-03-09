@@ -102,6 +102,26 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 16rpx;
+}
+
+.action-btn {
+  padding: 14rpx 24rpx;
+  border-radius: 36rpx;
+  background: #f5f5f5;
+}
+
+.action-text {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.delete-text {
+  color: #e64340;
+}
+
+.uploader-link {
+  color: #576b95;
 }
 
 .like-btn {

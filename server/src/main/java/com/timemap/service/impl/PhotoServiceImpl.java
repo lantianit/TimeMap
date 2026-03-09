@@ -7,14 +7,17 @@ import com.timemap.mapper.PhotoMapper;
 import com.timemap.mapper.UserMapper;
 import com.timemap.model.dto.NearbyPhotoResponse;
 import com.timemap.model.dto.PhotoDetailResponse;
+import com.timemap.model.dto.UserProfileResponse;
 import com.timemap.model.entity.Photo;
 import com.timemap.model.entity.PhotoLike;
 import com.timemap.model.entity.User;
 import com.timemap.service.CosService;
+import com.timemap.service.NotificationService;
 import com.timemap.service.PhotoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -31,6 +34,7 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
     private final UserMapper userMapper;
     private final CosService cosService;
     private final PhotoLikeMapper photoLikeMapper;
+    private final NotificationService notificationService;
 
     @Override
     public PhotoDetailResponse upload(MultipartFile file, Long userId,
@@ -135,6 +139,13 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
             like.setUserId(userId);
             photoLikeMapper.insert(like);
             liked = true;
+            // 通知照片作者
+            Photo photo = this.getById(photoId);
+            if (photo != null) {
+                notificationService.createNotification(
+                        photo.getUserId(), userId, "photo_like",
+                        photoId, null, null);
+            }
         }
 
         long likeCount = photoLikeMapper.selectCount(
@@ -201,6 +212,44 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
             stats.put("users", 0L);
             return stats;
         }
+    }
+
+    @Override
+    public Map<String, Object> getMyPhotos(Long userId, int page, int size) {
+        int offset = (page - 1) * size;
+        var list = photoMapper.findMyPhotos(userId, offset, size);
+        long total = photoMapper.countMyPhotos(userId);
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("total", total);
+        result.put("hasMore", offset + size < total);
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public void deletePhoto(Long photoId, Long userId) {
+        Photo photo = this.getById(photoId);
+        if (photo == null) throw new RuntimeException("照片不存在");
+        if (!photo.getUserId().equals(userId)) throw new RuntimeException("无权删除");
+        this.removeById(photoId);
+    }
+
+    @Override
+    public UserProfileResponse getUserProfile(Long userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) return null;
+        UserProfileResponse resp = new UserProfileResponse();
+        resp.setUserId(user.getId());
+        resp.setNickname(user.getNickname());
+        resp.setAvatarUrl(user.getAvatarUrl());
+        resp.setPhotoCount(Math.toIntExact(photoMapper.countMyPhotos(userId)));
+        resp.setAreaCount(Math.toIntExact(photoMapper.countUserAreas(userId)));
+        resp.setLikeCount(Math.toIntExact(photoMapper.countUserTotalLikes(userId)));
+        resp.setLatestPhotoDate(photoMapper.findLatestPhotoDate(userId));
+        resp.setTopAreas(photoMapper.findTopAreas(userId, 3));
+        resp.setCreateTime(user.getCreateTime() != null ? user.getCreateTime().toString() : "");
+        return resp;
     }
 
 }

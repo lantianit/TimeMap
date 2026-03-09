@@ -1,116 +1,49 @@
-/* 个人中心页样式 */
-.container {
-  min-height: 100vh;
-  background: #f5f5f5;
-}
+.container { min-height: 100vh; background: #f5f5f5; }
 
 /* 未登录 */
-.login-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 120rpx 60rpx 60rpx;
-}
-
-.login-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 80rpx;
-}
-
+.login-section { display: flex; flex-direction: column; align-items: center; padding: 120rpx 60rpx 60rpx; }
+.login-header { display: flex; flex-direction: column; align-items: center; margin-bottom: 80rpx; }
 .logo-circle {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 50%;
+  width: 160rpx; height: 160rpx; border-radius: 50%;
   background: linear-gradient(135deg, #07c160, #06ad56);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 30rpx;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 30rpx;
 }
-
-.logo-text {
-  font-size: 40rpx;
-  color: #fff;
-  font-weight: bold;
-}
-
-.app-name {
-  font-size: 40rpx;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 12rpx;
-}
-
-.app-desc {
-  font-size: 26rpx;
-  color: #999;
-}
-
-.login-features {
-  display: flex;
-  justify-content: space-around;
-  width: 100%;
-  margin-bottom: 80rpx;
-}
-
-.feature-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.feature-icon {
-  font-size: 48rpx;
-  margin-bottom: 12rpx;
-}
-
-.feature-text {
-  font-size: 24rpx;
-  color: #666;
-}
-
+.logo-text { font-size: 40rpx; color: #fff; font-weight: bold; }
+.app-name { font-size: 40rpx; font-weight: bold; color: #333; margin-bottom: 12rpx; }
+.app-desc { font-size: 26rpx; color: #999; }
+.login-features { display: flex; justify-content: space-around; width: 100%; margin-bottom: 80rpx; }
+.feature-item { display: flex; flex-direction: column; align-items: center; }
+.feature-icon { font-size: 48rpx; margin-bottom: 12rpx; }
+.feature-text { font-size: 24rpx; color: #666; }
 .login-btn {
-  width: 100%;
-  height: 96rpx;
+  width: 100%; height: 96rpx;
   background: linear-gradient(135deg, #07c160, #06ad56);
-  color: #fff;
-  font-size: 34rpx;
-  font-weight: bold;
-  border-radius: 48rpx;
-  border: none;
-  margin-bottom: 24rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  color: #fff; font-size: 34rpx; font-weight: bold;
+  border-radius: 48rpx; border: none; margin-bottom: 24rpx;
+  display: flex; align-items: center; justify-content: center;
 }
-
-.login-hint {
-  font-size: 22rpx;
-  color: #bbb;
-}
+.login-hint { font-size: 22rpx; color: #bbb; }
 
 /* 已登录 */
 .user-card {
-  background: #fff;
-  padding: 40rpx;
+  margin: 24rpx;
+  padding: 32rpx;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fcfa 100%);
+  border-radius: 24rpx;
+  box-shadow: 0 10rpx 30rpx rgba(7, 193, 96, 0.08);
 }
-
 .avatar {
   width: 120rpx;
   height: 120rpx;
   border-radius: 50%;
-  margin-right: 30rpx;
+  margin-right: 24rpx;
   background: #e0e0e0;
+  flex-shrink: 0;
 }
-
-.user-info {
-  flex: 1;
-}
-
+.user-main { flex: 1; min-width: 0; }
+.user-info { margin-bottom: 24rpx; }
 .nickname {
   font-size: 36rpx;
   font-weight: bold;
@@ -118,59 +51,144 @@
   display: block;
   margin-bottom: 10rpx;
 }
-
-.location {
+.user-summary {
   font-size: 24rpx;
-  color: #999;
+  color: #6f7a73;
+  line-height: 1.6;
+  display: block;
 }
-
-.section-title {
-  font-size: 30rpx;
-  font-weight: bold;
-  color: #333;
-  padding: 30rpx;
+.summary-grid {
+  display: flex;
+  gap: 16rpx;
 }
-
-.empty-tip {
+.summary-item {
+  flex: 1;
+  background: #f6fbf8;
+  border-radius: 18rpx;
+  padding: 18rpx 12rpx;
   text-align: center;
-  color: #ccc;
-  font-size: 28rpx;
-  padding: 80rpx 0;
 }
+.summary-value {
+  display: block;
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #1f1f1f;
+  margin-bottom: 6rpx;
+}
+.summary-label {
+  display: block;
+  font-size: 22rpx;
+  color: #8a948d;
+}
+.recent-row {
+  margin-top: 20rpx;
+  display: inline-flex;
+  align-items: center;
+  padding: 10rpx 18rpx;
+  background: rgba(7, 193, 96, 0.08);
+  border-radius: 999rpx;
+}
+.recent-tag {
+  font-size: 20rpx;
+  color: #07c160;
+  margin-right: 10rpx;
+}
+.recent-date {
+  font-size: 22rpx;
+  color: #4c5a51;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8rpx 30rpx 20rpx;
+}
+.section-title { font-size: 30rpx; font-weight: bold; color: #333; }
+.section-subtitle { font-size: 22rpx; color: #999; }
+.empty-tip { text-align: center; color: #ccc; font-size: 28rpx; padding: 80rpx 0; }
+.loading-tip { text-align: center; color: #bbb; font-size: 24rpx; padding: 30rpx 0; }
 
 .logout-btn {
-  margin: 60rpx 30rpx 0;
-  background: #fff;
-  color: #e64340;
-  border-radius: 12rpx;
-  font-size: 30rpx;
+  margin: 60rpx 30rpx 40rpx; background: #fff; color: #e64340;
+  border-radius: 12rpx; font-size: 30rpx;
 }
 
-/* 菜单列表 */
+/* 菜单 */
 .menu-list {
   background: #fff;
+  margin: 0 24rpx 24rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+.menu-item { display: flex; align-items: center; padding: 30rpx; border-bottom: 1rpx solid #f0f0f0; }
+.menu-icon { font-size: 40rpx; margin-right: 20rpx; }
+.menu-text { flex: 1; font-size: 30rpx; color: #333; }
+.menu-arrow { font-size: 32rpx; color: #ccc; }
+.menu-badge {
+  min-width: 36rpx; height: 36rpx; line-height: 36rpx;
+  text-align: center; background: #ff4d4f; color: #fff;
+  font-size: 20rpx; border-radius: 18rpx; padding: 0 8rpx;
+  margin-right: 12rpx;
+}
+
+.area-card {
+  margin: 0 24rpx 16rpx;
+  padding: 12rpx 0 8rpx;
+  background: #fff;
+  border-radius: 20rpx;
+}
+.area-list {
+  padding: 0 30rpx 18rpx;
+}
+.area-item + .area-item {
   margin-top: 20rpx;
 }
-
-.menu-item {
+.area-item-main {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 30rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  margin-bottom: 10rpx;
 }
-
-.menu-icon {
-  font-size: 40rpx;
-  margin-right: 20rpx;
-}
-
-.menu-text {
-  flex: 1;
-  font-size: 30rpx;
+.area-name {
+  font-size: 26rpx;
   color: #333;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.area-count {
+  font-size: 24rpx;
+  color: #07c160;
+  font-weight: 600;
+}
+.area-progress {
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: #f1f3f2;
+  overflow: hidden;
+}
+.area-progress-inner {
+  height: 100%;
+  min-width: 12rpx;
+  background: linear-gradient(90deg, #36d17d, #07c160);
+  border-radius: 999rpx;
 }
 
-.menu-arrow {
-  font-size: 32rpx;
-  color: #ccc;
+/* 照片网格 */
+.photo-section-head {
+  padding-top: 4rpx;
 }
+.photo-grid { padding: 0 20rpx; }
+.photo-cell {
+  background: #fff; border-radius: 12rpx; overflow: hidden;
+  margin-bottom: 20rpx;
+}
+.photo-thumb { width: 100%; height: 400rpx; display: block; }
+.photo-meta { padding: 20rpx; }
+.photo-loc { font-size: 26rpx; color: #333; display: block; margin-bottom: 8rpx;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photo-bottom { display: flex; justify-content: space-between; align-items: center; }
+.photo-date { font-size: 22rpx; color: #999; }
+.photo-stats { display: flex; gap: 16rpx; font-size: 22rpx; color: #999; }

@@ -12,6 +12,12 @@
 
   <!-- 点赞栏 -->
   <view class="like-bar">
+    <view class="action-btn report-btn" bindtap="onReportPhoto">
+      <text class="action-text">举报</text>
+    </view>
+    <view class="action-btn delete-btn" wx:if="{{photo.isOwner}}" bindtap="onDeletePhoto">
+      <text class="action-text delete-text">删除</text>
+    </view>
     <view class="like-btn {{photo.liked ? 'liked' : ''}}" bindtap="onPhotoLikeTap">
       <text class="like-icon">{{photo.liked ? '♥' : '♡'}}</text>
       <text class="like-text">{{photo.likeCount > 0 ? photo.likeCount : '点赞'}}</text>
@@ -37,9 +43,9 @@
         </view>
       </view>
     </view>
-    <view class="info-row">
+    <view class="info-row" bindtap="onUploaderTap">
       <text class="info-label">上传者</text>
-      <text class="info-value">{{photo.nickname || '微信用户'}}</text>
+      <text class="info-value uploader-link">{{photo.nickname || '微信用户'}}</text>
     </view>
     <view class="info-row" wx:if="{{photo.description}}">
       <text class="info-label">描述</text>

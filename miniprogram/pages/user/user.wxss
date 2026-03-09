@@ -1,0 +1,137 @@
+.user-page { min-height: 100vh; background: #f5f5f5; }
+
+.user-header {
+  margin: 24rpx;
+  padding: 32rpx;
+  display: flex;
+  align-items: flex-start;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fcfa 100%);
+  border-radius: 24rpx;
+  box-shadow: 0 10rpx 30rpx rgba(7, 193, 96, 0.08);
+}
+.user-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  margin-right: 24rpx;
+  background: #e0e0e0;
+  flex-shrink: 0;
+}
+.user-main { flex: 1; min-width: 0; }
+.user-meta { margin-bottom: 24rpx; }
+.user-nick { font-size: 36rpx; font-weight: bold; color: #333; display: block; margin-bottom: 10rpx; }
+.user-summary {
+  font-size: 24rpx;
+  color: #6f7a73;
+  line-height: 1.6;
+  display: block;
+}
+.summary-grid {
+  display: flex;
+  gap: 16rpx;
+}
+.summary-item {
+  flex: 1;
+  background: #f6fbf8;
+  border-radius: 18rpx;
+  padding: 18rpx 12rpx;
+  text-align: center;
+}
+.summary-value {
+  display: block;
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #1f1f1f;
+  margin-bottom: 6rpx;
+}
+.summary-label {
+  display: block;
+  font-size: 22rpx;
+  color: #8a948d;
+}
+.recent-row {
+  margin-top: 20rpx;
+  display: inline-flex;
+  align-items: center;
+  padding: 10rpx 18rpx;
+  background: rgba(7, 193, 96, 0.08);
+  border-radius: 999rpx;
+}
+.recent-tag {
+  font-size: 20rpx;
+  color: #07c160;
+  margin-right: 10rpx;
+}
+.recent-date {
+  font-size: 22rpx;
+  color: #4c5a51;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8rpx 30rpx 20rpx;
+}
+.section-title { font-size: 30rpx; font-weight: bold; color: #333; }
+.section-subtitle { font-size: 22rpx; color: #999; }
+
+.area-card {
+  margin: 0 24rpx 16rpx;
+  padding: 12rpx 0 8rpx;
+  background: #fff;
+  border-radius: 20rpx;
+}
+.area-list {
+  padding: 0 30rpx 18rpx;
+}
+.area-item + .area-item {
+  margin-top: 20rpx;
+}
+.area-item-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10rpx;
+}
+.area-name {
+  font-size: 26rpx;
+  color: #333;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.area-count {
+  font-size: 24rpx;
+  color: #07c160;
+  font-weight: 600;
+}
+.area-progress {
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: #f1f3f2;
+  overflow: hidden;
+}
+.area-progress-inner {
+  height: 100%;
+  min-width: 12rpx;
+  background: linear-gradient(90deg, #36d17d, #07c160);
+  border-radius: 999rpx;
+}
+
+.photo-section-head {
+  padding-top: 4rpx;
+}
+.photo-grid { padding: 0 20rpx; }
+.photo-cell {
+  background: #fff; border-radius: 12rpx; overflow: hidden;
+  margin-bottom: 20rpx;
+}
+.photo-img { width: 100%; height: 400rpx; display: block; }
+.photo-info { padding: 20rpx; }
+.photo-loc { font-size: 26rpx; color: #333; display: block; margin-bottom: 6rpx; }
+.photo-date { font-size: 22rpx; color: #999; }
+
+.empty-tip { text-align: center; color: #ccc; font-size: 28rpx; padding: 80rpx 0; }
+.loading-tip { text-align: center; color: #bbb; font-size: 24rpx; padding: 30rpx 0; }

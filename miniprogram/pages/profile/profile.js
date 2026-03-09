@@ -1,57 +1,114 @@
+const { request } = require('../../utils/request');
 const app = getApp();
+
+function normalizeTopAreas(areas) {
+  return (areas || []).map(item => ({
+    name: item.name || '未标注区域',
+    count: item.count || 0
+  }));
+}
 
 Page({
   data: {
     isLoggedIn: false,
-    userInfo: {}
+    userInfo: {},
+    topAreas: [],
+    photos: [],
+    photoTotal: 0,
+    photoPage: 1,
+    photoHasMore: true,
+    photoLoading: false,
+    unreadCount: 0
   },
 
   onShow() {
     this.checkLoginStatus();
+    if (app.isLoggedIn()) {
+      this.loadMyPhotos(true);
+      this.loadUnreadCount();
+    }
   },
 
-  /** 检查登录状态 */
   checkLoginStatus() {
     const isLoggedIn = app.isLoggedIn();
     this.setData({
       isLoggedIn,
-      userInfo: app.globalData.userInfo || {}
+      userInfo: app.globalData.userInfo || {},
+      topAreas: isLoggedIn ? this.data.topAreas : []
     });
   },
 
-  /** 一键登录 */
+  loadMyPhotos(refresh) {
+    const page = refresh ? 1 : this.data.photoPage;
+    this.setData({ photoLoading: true });
+    request('/photo/my', 'GET', { page, size: 20 })
+      .then(res => {
+        const data = res.data || {};
+        const user = data.user || {};
+        const list = (data.list || []).map(p => {
+          if (p.photoDate) p.photoDateLabel = p.photoDate;
+          return p;
+        });
+        this.setData({
+          userInfo: Object.assign({}, this.data.userInfo, user),
+          topAreas: normalizeTopAreas(user.topAreas),
+          photos: refresh ? list : this.data.photos.concat(list),
+          photoTotal: data.total || 0,
+          photoPage: page + 1,
+          photoHasMore: data.hasMore !== false,
+          photoLoading: false
+        });
+      })
+      .catch(() => { this.setData({ photoLoading: false }); });
+  },
+
+  loadUnreadCount() {
+    // 私信未读
+    const p1 = request('/message/unread', 'GET').then(r => (r.data && r.data.count) || 0).catch(() => 0);
+    // 互动未读
+    const p2 = request('/notification/unread', 'GET').then(r => (r.data && r.data.count) || 0).catch(() => 0);
+    Promise.all([p1, p2]).then(([msg, notif]) => {
+      this.setData({ unreadCount: msg + notif });
+    });
+  },
+
+  onReachBottom() {
+    if (this.data.photoHasMore && !this.data.photoLoading && this.data.isLoggedIn) {
+      this.loadMyPhotos(false);
+    }
+  },
+
+  onPhotoTap(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.navigateTo({ url: '/pages/detail/detail?id=' + id });
+  },
+
   onLogin() {
     wx.getUserProfile({
       desc: '用于完善个人资料',
       success: (profileRes) => {
         const userProfile = profileRes.userInfo;
-
         wx.showLoading({ title: '登录中...' });
-
         app.login(userProfile)
           .then(() => {
             wx.hideLoading();
             wx.showToast({ title: '登录成功', icon: 'success' });
             this.checkLoginStatus();
+            this.loadMyPhotos(true);
+            this.loadUnreadCount();
           })
-          .catch((err) => {
+          .catch(() => {
             wx.hideLoading();
             wx.showToast({ title: '登录失败', icon: 'none' });
-            console.error('[Profile] 登录失败', err);
           });
-      },
-      fail: (err) => {
-        console.log('[Profile] 用户拒绝授权', err);
       }
     });
   },
 
-  /** 跳转消息列表 */
   onGoMessages() {
     wx.navigateTo({ url: '/pages/messages/messages' });
   },
 
-  /** 退出登录 */
   onLogout() {
     wx.showModal({
       title: '提示',
@@ -59,6 +116,7 @@ Page({
       success: (res) => {
         if (res.confirm) {
           app.logout();
+          this.setData({ photos: [], photoTotal: 0, unreadCount: 0, topAreas: [] });
           this.checkLoginStatus();
           wx.showToast({ title: '已退出', icon: 'success' });
         }

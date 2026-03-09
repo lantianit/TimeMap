@@ -1,49 +1,63 @@
 <view class="chat-page">
-  <!-- 加载更多 -->
-  <scroll-view class="msg-list" scroll-y scroll-into-view="{{scrollIntoView}}"
+  <scroll-view class="msg-list" scroll-y scroll-with-animation scroll-anchoring
+    scroll-into-view="{{scrollIntoView}}" upper-threshold="120"
     bindscrolltoupper="onScrollToUpper"
-    style="height: calc(100vh - 120rpx - {{keyboardHeight}}px - env(safe-area-inset-bottom));">
+    style="height: {{messageListHeight}}px;">
 
-    <view class="load-more" wx:if="{{loading}}"><text>加载中...</text></view>
+    <view class="load-more" wx:if="{{loading}}"><text>正在加载更多消息</text></view>
     <view class="load-more" wx:if="{{!hasMore && messages.length > 30}}"><text>没有更多消息了</text></view>
 
-    <block wx:for="{{messages}}" wx:key="id">
-      <view class="msg-row {{item.isMine ? 'mine' : 'other'}}" id="msg-{{index}}">
-        <!-- 对方头像 -->
-        <image wx:if="{{!item.isMine}}" class="msg-avatar"
-          src="{{otherAvatarUrl || '/images/icon-user.svg'}}" />
+    <block wx:for="{{renderMessages}}" wx:key="renderKey">
+      <view wx:if="{{item.type === 'time'}}" class="chat-time">
+        <text class="chat-time-text">{{item.label}}</text>
+      </view>
+
+      <view wx:elif="{{item.type === 'message'}}" class="msg-row {{item.isMine ? 'mine' : 'other'}}" id="msg-{{item.messageId}}">
+        <image wx:if="{{!item.isMine && otherAvatarUrl}}" class="msg-avatar"
+          src="{{otherAvatarUrl}}" mode="aspectFill" />
+        <view wx:if="{{!item.isMine && !otherAvatarUrl}}" class="msg-avatar msg-avatar-fallback">
+          <text class="msg-avatar-fallback-text">{{otherAvatarText}}</text>
+        </view>
 
         <view class="msg-bubble-wrap">
           <view class="msg-bubble {{item.isMine ? 'bubble-mine' : 'bubble-other'}}">
-            <text>{{item.content}}</text>
+            <text selectable space="nbsp">{{item.content}}</text>
           </view>
-          <view class="msg-meta">
-            <text class="msg-time">{{item.timeLabel}}</text>
-            <text class="msg-fail" wx:if="{{item.sendFail}}" bindtap="onResend" data-idx="{{index}}">发送失败，点击重试</text>
+          <view class="msg-status" wx:if="{{item.isMine && (item.sending || item.sendFail)}}">
+            <text class="msg-sending" wx:if="{{item.sending}}">发送中</text>
+            <text class="msg-fail" wx:if="{{item.sendFail}}" bindtap="onResend" data-id="{{item.id}}">重试</text>
           </view>
         </view>
 
-        <!-- 我的头像 -->
-        <image wx:if="{{item.isMine}}" class="msg-avatar"
-          src="{{item.fromAvatarUrl || '/images/icon-user.svg'}}" />
+        <image wx:if="{{item.isMine && item.fromAvatarUrl}}" class="msg-avatar"
+          src="{{item.fromAvatarUrl}}" mode="aspectFill" />
+        <view wx:if="{{item.isMine && !item.fromAvatarUrl}}" class="msg-avatar msg-avatar-fallback">
+          <text class="msg-avatar-fallback-text">我</text>
+        </view>
       </view>
     </block>
 
     <view class="msg-empty" wx:if="{{!messages.length && !loading}}">
-      <text>暂无消息，说点什么吧</text>
+      <text>暂无消息，开始你们的第一句对话吧</text>
     </view>
   </scroll-view>
 
-  <!-- 输入栏 -->
-  <view class="chat-input-bar" style="bottom: {{keyboardHeight}}px;">
-    <input class="chat-input"
-      placeholder="输入消息..."
-      value="{{inputValue}}"
-      bindinput="onInputChange"
-      confirm-type="send"
-      bindconfirm="onSend"
-      adjust-position="{{false}}"
-      bindkeyboardheightchange="onKeyboardHeight" />
+  <view class="chat-input-bar" style="bottom: {{keyboardHeight}}px; padding-bottom: {{safeAreaBottom}}px;">
+    <view class="chat-input-wrap">
+      <textarea class="chat-input"
+        placeholder="输入消息"
+        value="{{inputValue}}"
+        bindinput="onInputChange"
+        bindfocus="onInputFocus"
+        bindblur="onInputBlur"
+        confirm-type="send"
+        bindconfirm="onSend"
+        adjust-position="{{false}}"
+        cursor-spacing="24"
+        bindkeyboardheightchange="onKeyboardHeight"
+        show-confirm-bar="{{false}}"
+        maxlength="500" />
+    </view>
     <view class="chat-send {{inputValue ? 'active' : ''}}" bindtap="onSend">发送</view>
   </view>
 </view>

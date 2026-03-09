@@ -75,16 +75,15 @@ Page({
     if (photo.createTime) {
       photo.createTimeFormatted = photo.createTime.replace('T', ' ').substring(0, 10);
     }
-    // 确保点赞字段有默认值
     if (photo.likeCount === undefined || photo.likeCount === null) {
-      console.log('[detail] likeCount 为空，设置默认值 0');
       photo.likeCount = 0;
     }
     if (photo.liked === undefined || photo.liked === null) {
-      console.log('[detail] liked 为空，设置默认值 false');
       photo.liked = false;
     }
-    console.log('[detail] _formatPhoto 输出:', photo);
+    // 判断是否是自己的照片
+    const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
+    photo.isOwner = myId && String(photo.userId) === String(myId);
     return photo;
   },
 
@@ -341,12 +340,13 @@ Page({
     const userId = e.currentTarget.dataset.userId;
     if (!userId) return;
     const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
-    if (String(userId) === String(myId)) return;
-    if (!checkLogin()) return;
+    if (String(userId) === String(myId)) {
+      wx.navigateTo({ url: '/pages/profile/profile' });
+      return;
+    }
     wx.navigateTo({
-      url: '/pages/chat/chat?userId=' + userId +
-        '&nickname=' + encodeURIComponent(e.currentTarget.dataset.nickname || '') +
-        '&avatarUrl=' + encodeURIComponent(e.currentTarget.dataset.avatarUrl || '')
+      url: '/pages/user/user?userId=' + userId +
+        '&nickname=' + encodeURIComponent(e.currentTarget.dataset.nickname || '')
     });
   },
 
@@ -377,6 +377,55 @@ Page({
   },
 
   // ========== 照片点赞 ==========
+
+  /** 删除照片（仅自己的） */
+  onDeletePhoto() {
+    if (!checkLogin()) return;
+    wx.showModal({
+      title: '确认删除',
+      content: '删除后不可恢复，确定要删除这张照片吗？',
+      confirmColor: '#e64340',
+      success: (res) => {
+        if (!res.confirm) return;
+        request('/photo/delete?photoId=' + this._photoId, 'POST')
+          .then(() => {
+            wx.showToast({ title: '已删除', icon: 'success' });
+            setTimeout(() => { wx.navigateBack(); }, 800);
+          })
+          .catch(() => { wx.showToast({ title: '删除失败', icon: 'none' }); });
+      }
+    });
+  },
+
+  /** 举报照片 */
+  onReportPhoto() {
+    if (!checkLogin()) return;
+    wx.showActionSheet({
+      itemList: ['色情低俗', '违法违规', '侵权', '虚假信息', '其他'],
+      success: (res) => {
+        const reasons = ['色情低俗', '违法违规', '侵权', '虚假信息', '其他'];
+        const reason = reasons[res.tapIndex];
+        request('/report/submit?targetType=photo&targetId=' + this._photoId + '&reason=' + encodeURIComponent(reason), 'POST')
+          .then(() => { wx.showToast({ title: '举报已提交', icon: 'success' }); })
+          .catch(() => { wx.showToast({ title: '举报失败', icon: 'none' }); });
+      }
+    });
+  },
+
+  /** 上传者信息点击 → 用户主页 */
+  onUploaderTap() {
+    const photo = this.data.photo;
+    if (!photo || !photo.userId) return;
+    const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
+    if (String(photo.userId) === String(myId)) {
+      wx.navigateTo({ url: '/pages/profile/profile' });
+      return;
+    }
+    wx.navigateTo({
+      url: '/pages/user/user?userId=' + photo.userId +
+        '&nickname=' + encodeURIComponent(photo.nickname || '')
+    });
+  },
 
   onPhotoLikeTap() {
     if (!checkLogin()) return;

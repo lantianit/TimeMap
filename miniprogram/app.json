@@ -1,12 +1,12 @@
 {
   "pages": [
     "pages/map/map",
-    "pages/upload/upload",
     "pages/detail/detail",
     "pages/profile/profile",
     "pages/community/community",
     "pages/chat/chat",
-    "pages/messages/messages"
+    "pages/messages/messages",
+    "pages/user/user"
   ],
   "window": {
     "navigationBarTitleText": "时迹地图",

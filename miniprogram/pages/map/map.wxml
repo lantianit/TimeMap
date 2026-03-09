@@ -66,13 +66,21 @@
     </view>
     <!-- 第二行：拍摄日期 -->
     <view class="upload-float-row">
-      <picker mode="date" value="{{uploadDate}}" end="{{todayDate}}" bindchange="onUploadDateChange">
+      <picker mode="date" value="{{uploadDate}}" start="1900-01-01" end="{{todayDate}}" bindchange="onUploadDateChange">
         <view class="upload-float-date">
           <image class="upload-float-icon-sm" src="/images/icon-calendar.svg" />
           <text>拍摄于</text>
           <text>{{uploadDateDisplay}}</text>
         </view>
       </picker>
+    </view>
+    <!-- 第三行：描述输入（多行自适应换行，最多200字） -->
+    <view class="upload-float-row upload-float-row-desc">
+      <view class="upload-float-desc-wrap">
+        <textarea class="upload-float-desc" placeholder="添加描述（可选）" value="{{uploadDesc}}" bindinput="onDescInput"
+          maxlength="200" auto-height />
+        <text class="upload-float-desc-count">{{uploadDescLength}}/200</text>
+      </view>
     </view>
     <!-- 第三行：照片选择 + 上传按钮 -->
     <view class="upload-float-row second">
@@ -173,6 +181,9 @@
     <view class="bar-btn" bindtap="onChatTap">
       <view class="bar-icon-circle">
         <image class="bar-icon-img" src="/images/icon-chat.svg" />
+      </view>
+      <view class="bar-badge" wx:if="{{unreadTotal > 0}}">
+        <text>{{unreadTotal > 99 ? '99+' : unreadTotal}}</text>
       </view>
     </view>
     <view class="bar-btn bar-btn-main" bindtap="onFilterTap">
