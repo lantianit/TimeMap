@@ -7,11 +7,17 @@ Page({
     locationName: '',
     latitude: 0,
     longitude: 0,
-    description: ''
+    description: '',
+    todayDate: ''
   },
 
   onLoad() {
     checkLogin();
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    this.setData({ todayDate: y + '-' + m + '-' + dd });
   },
 
   /** 选择图片 */

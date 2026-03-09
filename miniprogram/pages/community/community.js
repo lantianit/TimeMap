@@ -18,6 +18,12 @@ Page({
     latitude: 0,
     longitude: 0,
     districtName: '',
+    // 统计摘要
+    statTotal: 0,
+    statDays: 0,
+    statBusiestDay: '',
+    // 排序方式：photoDate=拍摄时间, createTime=上传时间
+    sortBy: 'photoDate',
     // 时间轴展开面板
     timelineExpanded: false,
     panelDates: [],
@@ -30,12 +36,13 @@ Page({
       longitude: parseFloat(options.longitude) || 114.3162
     });
     this._scrollTimer = null;
-    this._photoRects = null; // 缓存的照片位置信息
+    this._photoRects = null;
     this._rectsCacheTime = 0;
     this._windowHeight = wx.getSystemInfoSync().windowHeight;
     this._qqmapsdk = new QQMapWX({ key: app.globalData.mapKey });
-    this._updateDistrict(this.data.latitude, this.data.longitude);
-    this.loadData(true);
+    this._district = '';
+    // 先解析区划，解析完成后再加载数据
+    this._resolveDistrictThenLoad(this.data.latitude, this.data.longitude);
   },
 
   onUnload() {
@@ -70,11 +77,10 @@ Page({
     this.setData({ loading: true });
 
     request('/photo/community', 'GET', {
-      latitude: this.data.latitude,
-      longitude: this.data.longitude,
-      radius: 10,
+      district: this._district || '',
       page: page,
-      size: 20
+      size: 20,
+      sortBy: this.data.sortBy
     }).then(res => {
       const data = res.data || {};
       const list = data.list || [];
@@ -85,10 +91,31 @@ Page({
       const months = this._extractMonths(groups);
       const panelDates = this._buildPanelDates(groups);
 
+      // 计算统计摘要
+      const statTotal = allPhotos.length;
+      const statDays = groups.length;
+      let statBusiestDay = '';
+      if (groups.length > 0) {
+        let max = groups[0];
+        for (let i = 1; i < groups.length; i++) {
+          if (groups[i].photoCount > max.photoCount) max = groups[i];
+        }
+        const p = max.dateKey.split('-');
+        const userSet = {};
+        max.photos.forEach(photo => {
+          if (photo.userId) userSet[photo.userId] = true;
+        });
+        const userCount = Object.keys(userSet).length;
+        statBusiestDay = parseInt(p[1]) + '月' + parseInt(p[2]) + '日(' + userCount + '位用户共上传' + max.photoCount + '张)';
+      }
+
       this.setData({
         groups,
         months,
         panelDates,
+        statTotal,
+        statDays,
+        statBusiestDay,
         hasMore: data.hasMore !== false,
         isEmpty: allPhotos.length === 0,
         page: page + 1,
@@ -118,8 +145,13 @@ Page({
   _groupByDate(list) {
     const map = {};
     const order = [];
+    const useCreateTime = this.data.sortBy === 'createTime';
     list.forEach(item => {
-      const date = item.photoDate || '';
+      // 按上传时间分组时，取 createTime 的日期部分
+      let date = item.photoDate || '';
+      if (useCreateTime && item.createTime) {
+        date = item.createTime.substring(0, 10); // "2026-03-06T22:59:57" → "2026-03-06"
+      }
       if (!map[date]) {
         map[date] = {
           dateKey: date,
@@ -141,6 +173,12 @@ Page({
   _extractMonths(groups) {
     const seen = {};
     const months = [];
+    const years = new Set();
+    groups.forEach(g => {
+      const parts = g.dateKey.split('-');
+      years.add(parts[0]);
+    });
+    const multiYear = years.size > 1;
     groups.forEach(g => {
       const parts = g.dateKey.split('-');
       const key = parts[0] + '-' + parts[1];
@@ -148,7 +186,7 @@ Page({
         seen[key] = true;
         months.push({
           key,
-          label: parseInt(parts[1]) + '月',
+          label: multiYear ? parts[0] + '年' + parseInt(parts[1]) + '月' : parseInt(parts[1]) + '月',
           firstDate: g.dateKey
         });
       }
@@ -339,7 +377,7 @@ Page({
     // 阻止面板区域的触摸事件穿透到页面，scroll-view 内部滚动不受影响
   },
 
-  _updateDistrict(lat, lng) {
+  _resolveDistrictThenLoad(lat, lng) {
     this._qqmapsdk.reverseGeocoder({
       location: { latitude: lat, longitude: lng },
       success: (res) => {
@@ -347,9 +385,15 @@ Page({
         const city = comp.city || '';
         const district = comp.district || '';
         const name = city && district ? city + ' ' + district : city || district || '';
+        this._district = district;
         this.setData({ districtName: name });
+        this.loadData(true);
       },
-      fail: () => {}
+      fail: () => {
+        this._district = '';
+        this.setData({ districtName: '' });
+        this.loadData(true);
+      }
     });
   },
 
@@ -368,15 +412,38 @@ Page({
             groups: [],
             months: [],
             panelDates: [],
+            statTotal: 0,
+            statDays: 0,
+            statBusiestDay: '',
             isEmpty: false,
             hasMore: true,
             page: 1
           });
-          this._updateDistrict(res.latitude, res.longitude);
-          this.loadData(true);
+          this._resolveDistrictThenLoad(res.latitude, res.longitude);
         }
       }
     });
+  },
+
+  onSortToggle(e) {
+    const sortBy = e.currentTarget.dataset.sort;
+    if (sortBy === this.data.sortBy) return;
+    this._flatList = [];
+    this.setData({
+      sortBy,
+      groups: [],
+      months: [],
+      panelDates: [],
+      activeDate: '',
+      activePhotoId: '',
+      statTotal: 0,
+      statDays: 0,
+      statBusiestDay: '',
+      isEmpty: false,
+      hasMore: true,
+      page: 1
+    });
+    this.loadData(true);
   },
 
   onMonthTap(e) {

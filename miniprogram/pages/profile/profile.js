@@ -46,6 +46,11 @@ Page({
     });
   },
 
+  /** 跳转消息列表 */
+  onGoMessages() {
+    wx.navigateTo({ url: '/pages/messages/messages' });
+  },
+
   /** 退出登录 */
   onLogout() {
     wx.showModal({

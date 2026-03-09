@@ -45,27 +45,28 @@ public interface PhotoMapper extends BaseMapper<Photo> {
 
     @Select("""
         <script>
-        SELECT p.id, p.image_url, p.thumbnail_url, p.longitude, p.latitude,
-               p.location_name, p.photo_date, u.nickname, u.avatar_url
+        SELECT p.id, p.user_id, p.image_url, p.thumbnail_url, p.longitude, p.latitude,
+               p.location_name, p.photo_date, p.create_time, u.nickname, u.avatar_url
         FROM t_photo p
         LEFT JOIN t_user u ON p.user_id = u.id
         WHERE p.deleted = 0
-          AND p.latitude  BETWEEN #{lat} - (#{radiusKm} / 111.0) AND #{lat} + (#{radiusKm} / 111.0)
-          AND p.longitude BETWEEN #{lng} - (#{radiusKm} / (111.0 * COS(RADIANS(#{lat})))) AND #{lng} + (#{radiusKm} / (111.0 * COS(RADIANS(#{lat}))))
-          AND (6371 * 2 * ASIN(SQRT(
-                   POW(SIN(RADIANS(p.latitude - #{lat}) / 2), 2) +
-                   COS(RADIANS(#{lat})) * COS(RADIANS(p.latitude)) *
-                   POW(SIN(RADIANS(p.longitude - #{lng}) / 2), 2)
-               ))) &lt;= #{radiusKm}
+          AND p.district = #{district}
+        <if test="sortBy == 'createTime'">
+        ORDER BY p.create_time DESC, p.id DESC
+        </if>
+        <if test="sortBy != 'createTime'">
         ORDER BY p.photo_date DESC, p.id DESC
+        </if>
         LIMIT #{offset}, #{size}
         </script>
     """)
-    List<CommunityPhotoResponse> findCommunity(@Param("lat") double lat,
-                                                @Param("lng") double lng,
-                                                @Param("radiusKm") double radiusKm,
-                                                @Param("offset") int offset,
-                                                @Param("size") int size);
+    List<CommunityPhotoResponse> findCommunity(@Param("offset") int offset,
+                                                @Param("size") int size,
+                                                @Param("sortBy") String sortBy,
+                                                @Param("district") String district);
+
+    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND district = #{district}")
+    long countCommunity(@Param("district") String district);
 
     @Select("""
         <script>
@@ -80,8 +81,32 @@ public interface PhotoMapper extends BaseMapper<Photo> {
                ))) &lt;= #{radiusKm}
         </script>
     """)
-    long countCommunity(@Param("lat") double lat,
-                        @Param("lng") double lng,
-                        @Param("radiusKm") double radiusKm);
+    long countNearby(@Param("lat") double lat,
+                     @Param("lng") double lng,
+                     @Param("radiusKm") double radiusKm);
+
+    @Select("""
+        <script>
+        SELECT COUNT(*) FROM t_photo
+        WHERE deleted = 0
+          AND DATE(create_time) = CURDATE()
+          AND latitude  BETWEEN #{lat} - (#{radiusKm} / 111.0) AND #{lat} + (#{radiusKm} / 111.0)
+          AND longitude BETWEEN #{lng} - (#{radiusKm} / (111.0 * COS(RADIANS(#{lat})))) AND #{lng} + (#{radiusKm} / (111.0 * COS(RADIANS(#{lat}))))
+          AND (6371 * 2 * ASIN(SQRT(
+                   POW(SIN(RADIANS(latitude - #{lat}) / 2), 2) +
+                   COS(RADIANS(#{lat})) * COS(RADIANS(latitude)) *
+                   POW(SIN(RADIANS(longitude - #{lng}) / 2), 2)
+               ))) &lt;= #{radiusKm}
+        </script>
+    """)
+    long countToday(@Param("lat") double lat,
+                    @Param("lng") double lng,
+                    @Param("radiusKm") double radiusKm);
+
+    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND district = #{district}")
+    long countByDistrict(@Param("district") String district);
+
+    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND district = #{district} AND DATE(create_time) = CURDATE()")
+    long countTodayByDistrict(@Param("district") String district);
 
 }

@@ -7,13 +7,14 @@ import com.timemap.model.entity.Photo;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 public interface PhotoService extends IService<Photo> {
 
     PhotoDetailResponse upload(MultipartFile file, Long userId,
                                Double longitude, Double latitude,
                                String locationName, String photoDate,
-                               String description);
+                               String description, String district);
 
     List<NearbyPhotoResponse> findNearby(double lat, double lng, double radiusKm,
                                          String startDate, String endDate);
@@ -23,6 +24,7 @@ public interface PhotoService extends IService<Photo> {
     List<PhotoDetailResponse> getBatchDetail(String ids);
 
 
-    com.timemap.model.dto.CommunityPageResponse findCommunity(double lat, double lng, double radiusKm, int page, int size);
+    com.timemap.model.dto.CommunityPageResponse findCommunity(String district, int page, int size, String sortBy);
 
+    Map<String, Long> getAreaStats(String district);
 }

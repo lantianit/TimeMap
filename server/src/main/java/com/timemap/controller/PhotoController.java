@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/photo")
@@ -24,13 +25,14 @@ public class PhotoController {
             @RequestParam("latitude") Double latitude,
             @RequestParam("photoDate") String photoDate,
             @RequestParam(value = "locationName", required = false) String locationName,
+            @RequestParam(value = "district", required = false) String district,
             @RequestParam(value = "description", required = false) String description,
             @RequestAttribute("userId") Long userId) {
         if (file.isEmpty()) {
             return Result.fail("请选择要上传的图片");
         }
         PhotoDetailResponse photo = photoService.upload(
-                file, userId, longitude, latitude, locationName, photoDate, description);
+                file, userId, longitude, latitude, locationName, photoDate, description, district);
         return Result.ok(photo);
     }
 
@@ -63,13 +65,19 @@ public class PhotoController {
 
     @GetMapping("/community")
     public Result<com.timemap.model.dto.CommunityPageResponse> community(
-            @RequestParam("latitude") double latitude,
-            @RequestParam("longitude") double longitude,
-            @RequestParam(value = "radius", defaultValue = "10") double radius,
+            @RequestParam("district") String district,
             @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "size", defaultValue = "20") int size) {
-        com.timemap.model.dto.CommunityPageResponse data = photoService.findCommunity(latitude, longitude, radius, page, size);
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "sortBy", defaultValue = "photoDate") String sortBy) {
+        com.timemap.model.dto.CommunityPageResponse data = photoService.findCommunity(district, page, size, sortBy);
         return Result.ok(data);
+    }
+
+    @GetMapping("/stats")
+    public Result<Map<String, Long>> stats(
+            @RequestParam("district") String district) {
+        Map<String, Long> stats = photoService.getAreaStats(district);
+        return Result.ok(stats);
     }
 
 }

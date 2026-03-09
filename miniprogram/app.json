@@ -4,10 +4,12 @@
     "pages/upload/upload",
     "pages/detail/detail",
     "pages/profile/profile",
-    "pages/community/community"
+    "pages/community/community",
+    "pages/chat/chat",
+    "pages/messages/messages"
   ],
   "window": {
-    "navigationBarTitleText": "时光地图",
+    "navigationBarTitleText": "时迹地图",
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f5f5f5"

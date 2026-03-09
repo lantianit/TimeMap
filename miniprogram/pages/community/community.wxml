@@ -1,23 +1,22 @@
 <view class="community-page {{timelineExpanded ? 'page-locked' : ''}}">
 
-  <!-- 区域名称栏 -->
-  <view class="district-bar" bindtap="onDistrictTap" wx:if="{{districtName}}">
-    <image class="district-icon" src="/images/icon-location.svg" />
-    <text class="district-name">{{districtName}}</text>
-    <text class="district-arrow">▸</text>
+  <!-- 顶部栏：区域 + 排序切换 -->
+  <view class="top-bar">
+    <view class="district-bar" bindtap="onDistrictTap" wx:if="{{districtName}}">
+      <image class="district-icon" src="/images/icon-location.svg" />
+      <text class="district-name">{{districtName}}</text>
+      <text class="district-arrow">▸</text>
+    </view>
+    <view class="sort-toggle" catchtap="">
+      <view class="sort-item {{sortBy === 'photoDate' ? 'active' : ''}}" catchtap="onSortToggle" data-sort="photoDate">拍摄时间</view>
+      <view class="sort-item {{sortBy === 'createTime' ? 'active' : ''}}" catchtap="onSortToggle" data-sort="createTime">上传时间</view>
+    </view>
   </view>
 
-  <!-- 月份快捷导航 -->
-  <scroll-view class="month-nav" scroll-x enhanced show-scrollbar="{{false}}" wx:if="{{months.length > 1}}">
-    <view class="month-nav-inner">
-      <view
-        class="month-tag {{activeMonth === item.key ? 'active' : ''}}"
-        wx:for="{{months}}" wx:key="key"
-        bindtap="onMonthTap"
-        data-first="{{item.firstDate}}"
-      >{{item.label}}</view>
-    </view>
-  </scroll-view>
+  <!-- 统计摘要 -->
+  <view class="stats-bar" wx:if="{{statTotal > 0}}">
+    <text class="stats-text">共 {{statTotal}} 张照片 · 包含 {{statDays}} 个日期 · {{statBusiestDay}}最活跃</text>
+  </view>
 
   <!-- 空状态 -->
   <view class="empty" wx:if="{{isEmpty && !loading}}">

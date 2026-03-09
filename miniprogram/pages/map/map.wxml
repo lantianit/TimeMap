@@ -11,6 +11,7 @@
   <view class="top-district-card" wx:if="{{districtName}}" bindtap="onDistrictTap">
     <image class="district-icon" src="/images/icon-location.svg" />
     <text class="district-text">{{districtName}}</text>
+    <text class="district-stats" wx:if="{{areaTotal > 0}}">{{areaTotal}}张{{areaToday > 0 ? ' · 今日+' + areaToday : ''}}</text>
   </view>
 
   <!-- 右侧工具栏（去掉了"+"按钮） -->
@@ -43,19 +44,23 @@
 
   <!-- 上传悬浮条 -->
   <view class="upload-float {{showUploadBar ? 'show' : ''}}" catchtap="">
-    <!-- 第一行：位置 + 日期 + 取消 -->
+    <!-- 第一行：位置 -->
     <view class="upload-float-row">
       <image class="upload-float-icon" src="/images/icon-location.svg" />
       <text class="upload-float-addr">{{tapLocationName}}</text>
+      <view class="upload-float-close" bindtap="onCancelUpload">✕</view>
+    </view>
+    <!-- 第二行：拍摄日期 -->
+    <view class="upload-float-row">
       <picker mode="date" value="{{uploadDate}}" end="{{todayDate}}" bindchange="onUploadDateChange">
         <view class="upload-float-date">
           <image class="upload-float-icon-sm" src="/images/icon-calendar.svg" />
+          <text>拍摄于</text>
           <text>{{uploadDateDisplay}}</text>
         </view>
       </picker>
-      <view class="upload-float-close" bindtap="onCancelUpload">✕</view>
     </view>
-    <!-- 第二行：照片选择 + 上传按钮 -->
+    <!-- 第三行：照片选择 + 上传按钮 -->
     <view class="upload-float-row second">
       <scroll-view class="upload-float-images" scroll-x enhanced show-scrollbar="{{false}}">
         <view class="upload-float-img-list">
@@ -129,8 +134,8 @@
         </cover-view>
       </cover-view>
     </block>
-    <!-- 临时上传标记：始终在最上层 -->
-    <cover-view slot="callout" marker-id="99999" wx:if="{{showUploadBar || showHidePhotosBar}}">
+    <!-- 临时上传标记 / 聚焦标记：始终在最上层 -->
+    <cover-view slot="callout" marker-id="99999" wx:if="{{showUploadBar || showHidePhotosBar || showFocusMarker}}">
       <cover-view class="photo-callout" wx:if="{{tempPreviewImage}}">
         <cover-view class="photo-card temp-card">
           <cover-image class="photo-thumb" src="{{tempPreviewImage}}" />

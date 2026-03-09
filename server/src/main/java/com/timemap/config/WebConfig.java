@@ -29,7 +29,10 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/photo/nearby",
                         "/api/photo/detail/**",
                         "/api/photo/batch",
-                        "/api/photo/community"
+                        "/api/photo/community",
+                        "/api/photo/stats",
+                        "/api/comment/list",
+                        "/api/comment/replies"
                 );
     }
 }

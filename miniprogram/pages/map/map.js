@@ -75,10 +75,15 @@ Page({
     // 定位按钮显隐
     showLocateBtn: false,
     // 临时标记预览图
-    tempPreviewImage: ''
+    tempPreviewImage: '',
+    // 聚焦标记（从详情页跳转）
+    showFocusMarker: false,
+    // 区域统计
+    areaTotal: 0,
+    areaToday: 0
   },
 
-  onLoad() {
+  onLoad(options) {
     this.mapCtx = wx.createMapContext('map');
     this._loading = false;
     this._loadTimer = null;
@@ -92,6 +97,33 @@ Page({
     this.setData({ uploadDate: today, todayDate: today, uploadDateDisplay: '今天' });
 
     this._restoreFilterState();
+
+    // 从详情页跳转过来：聚焦到指定照片位置
+    if (options && options.focusLat && options.focusLng) {
+      const lat = parseFloat(options.focusLat);
+      const lng = parseFloat(options.focusLng);
+      const image = options.focusImage ? decodeURIComponent(options.focusImage) : '';
+      this.setData({
+        latitude: lat, longitude: lng,
+        scale: 16,
+        showFocusMarker: true,
+        tempPreviewImage: image
+      });
+      this._currentLat = lat;
+      this._currentLng = lng;
+      this._focusMarkerData = {
+        id: TEMP_MARKER_ID,
+        latitude: lat, longitude: lng,
+        iconPath: '/images/marker-transparent.png',
+        width: 1, height: 1,
+        zIndex: 999,
+        customCallout: { anchorY: 0, anchorX: 0, display: 'ALWAYS' }
+      };
+      this._updateDistrict(lat, lng);
+      this.loadNearbyPhotos();
+      return;
+    }
+
     this.getCurrentLocation();
   },
 
@@ -516,6 +548,7 @@ Page({
           emptyState: photos.length === 0
         });
         this._rebuildMarkers();
+        this.loadAreaStats();
       })
       .catch((err) => {
         if (seq !== this._loadSeq) return;
@@ -529,6 +562,17 @@ Page({
       });
   },
 
+  loadAreaStats() {
+    const district = this.data.districtName || '';
+    if (!district) return;
+    request('/photo/stats', 'GET', { district })
+      .then(res => {
+        const data = res.data || {};
+        this.setData({ areaTotal: data.total || 0, areaToday: data.today || 0 });
+      })
+      .catch(() => {});
+  },
+
   // ========== 地图点击 → 直接触发上传流程 ==========
 
   onMapTap(e) {
@@ -536,6 +580,11 @@ Page({
     if (this.data.showFilterPanel) {
       this.setData({ showFilterPanel: false });
       return;
+    }
+
+    // 清除聚焦标记
+    if (this.data.showFocusMarker) {
+      this.setData({ showFocusMarker: false, tempPreviewImage: '' });
     }
     // 如果已经在上传流程中，点击地图 = 重新选点
     if (this.data.showUploadBar) {
@@ -611,23 +660,40 @@ Page({
           ? addr.formatted_addresses.recommend
           : addr.address;
         this.setData({ tapLocationName: name || addr.address });
+        // 存储区划信息用于上传
+        const comp = addr.address_component || {};
+        this._tapDistrict = comp.district || '';
       },
       fail: (err) => {
         console.error('[Map] 逆地理编码失败', err);
         this.setData({
           tapLocationName: lat.toFixed(4) + ', ' + lng.toFixed(4)
         });
+        this._tapDistrict = '';
       }
     });
   },
 
-  _rebuildMarkers() {
-    let markers = [...(this._historyMarkers || [])];
+  _rebuildMarkers(forceRefresh) {
+    const base = [...(this._historyMarkers || [])];
+
     if (this.data.tapLat && (this.data.showUploadBar || this.data.showHidePhotosBar)) {
       const hasImages = this.data.selectedImages.length > 0;
+
+      // 强制刷新：先只设置不含临时标记的列表，下一帧再加回来
+      if (forceRefresh) {
+        this.setData({
+          markers: base,
+          tempPreviewImage: hasImages ? this.data.selectedImages[0] : ''
+        });
+        setTimeout(() => {
+          this._rebuildMarkers(false);
+        }, 50);
+        return;
+      }
+
       if (hasImages) {
-        // 有照片时用 customCallout 展示缩略图（和照片标记同样方式）
-        markers.push({
+        base.push({
           id: TEMP_MARKER_ID,
           latitude: this.data.tapLat,
           longitude: this.data.tapLng,
@@ -638,8 +704,7 @@ Page({
         });
         this.setData({ tempPreviewImage: this.data.selectedImages[0] });
       } else {
-        // 没选照片时用 customCallout（和照片标记同层，WXML 顺序靠后 = 在上面）
-        markers.push({
+        base.push({
           id: TEMP_MARKER_ID,
           latitude: this.data.tapLat,
           longitude: this.data.tapLng,
@@ -650,10 +715,16 @@ Page({
         });
         this.setData({ tempPreviewImage: '' });
       }
+    } else if (this.data.showFocusMarker && this._focusMarkerData) {
+      // 聚焦标记（从详情页跳转）— 保持 tempPreviewImage 不变
+      const hasFocus = base.some(m => m.id === TEMP_MARKER_ID);
+      if (!hasFocus) {
+        base.push(this._focusMarkerData);
+      }
     } else {
       this.setData({ tempPreviewImage: '' });
     }
-    this.setData({ markers });
+    this.setData({ markers: base });
   },
 
   // ========== 上传悬浮条操作 ==========
@@ -684,7 +755,7 @@ Page({
         this.setData({
           selectedImages: [...this.data.selectedImages, ...newImages]
         });
-        this._rebuildMarkers();
+        this._rebuildMarkers(true);
       }
     });
   },
@@ -702,7 +773,7 @@ Page({
         this.setData({
           selectedImages: [...this.data.selectedImages, ...newImages]
         });
-        this._rebuildMarkers();
+        this._rebuildMarkers(true);
       }
     });
   },
@@ -712,7 +783,7 @@ Page({
     const images = [...this.data.selectedImages];
     images.splice(idx, 1);
     this.setData({ selectedImages: images });
-    this._rebuildMarkers();
+    this._rebuildMarkers(true);
   },
 
   onSubmitUpload() {
@@ -728,7 +799,7 @@ Page({
       if (idx >= total) {
         const msg = failed > 0
           ? `上传完成，${total - failed}张成功，${failed}张失败`
-          : total === 1 ? '上传成功，已加入时光地图'
+          : total === 1 ? '上传成功，已加入时迹地图'
           : `${total}张照片全部上传成功`;
         this._showToast(msg);
         this.setData({ uploading: false, uploadProgress: 0 });
@@ -753,7 +824,8 @@ Page({
 
       uploadFile('/photo/upload', selectedImages[idx], {
         longitude: String(tapLng), latitude: String(tapLat),
-        photoDate: uploadDate, locationName: tapLocationName || '', description: ''
+        photoDate: uploadDate, locationName: tapLocationName || '',
+        district: this._tapDistrict || '', description: ''
       })
         .catch(() => { failed++; })
         .finally(() => { uploadNext(idx + 1); });

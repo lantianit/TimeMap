@@ -1,18 +1,35 @@
-const { request } = require('../../utils/request');
+const { request, checkLogin } = require('../../utils/request');
+const app = getApp();
 
 Page({
   data: {
     photos: [],
     current: 0,
     total: 0,
-    // 当前展示的照片信息
-    photo: {}
+    photo: {},
+    // 评论
+    comments: [],
+    commentTotal: 0,
+    commentPage: 1,
+    commentHasMore: true,
+    commentLoading: false,
+    // 输入
+    inputValue: '',
+    inputFocus: false,
+    replyMode: false,
+    replyPlaceholder: '说点什么...',
+    replyParentId: 0,
+    replyToUserId: 0,
+    // 键盘高度
+    keyboardHeight: 0
   },
 
   onLoad(options) {
+    this._photoId = null;
     if (options.ids) {
       this.loadBatch(options.ids);
     } else if (options.id) {
+      this._photoId = options.id;
       this.loadDetail(options.id);
     }
   },
@@ -20,44 +37,317 @@ Page({
   loadBatch(ids) {
     request('/photo/batch', 'GET', { ids })
       .then((res) => {
-        const photos = res.data || [];
-        if (photos.length === 0) {
-          wx.showToast({ title: '照片不存在', icon: 'none' });
-          return;
-        }
-        this.setData({
-          photos,
-          total: photos.length,
-          current: 0,
-          photo: photos[0]
-        });
+        const photos = (res.data || []).map(p => this._formatPhoto(p));
+        if (!photos.length) { wx.showToast({ title: '照片不存在', icon: 'none' }); return; }
+        this._photoId = photos[0].id;
+        this.setData({ photos, total: photos.length, current: 0, photo: photos[0] });
+        this.loadComments(true);
       })
-      .catch(() => {
-        wx.showToast({ title: '加载失败', icon: 'none' });
-      });
+      .catch(() => wx.showToast({ title: '加载失败', icon: 'none' }));
   },
 
   loadDetail(id) {
     request('/photo/detail/' + id, 'GET')
       .then((res) => {
-        const photo = res.data || {};
+        const photo = this._formatPhoto(res.data || {});
         this.setData({ photos: [photo], total: 1, current: 0, photo });
+        this.loadComments(true);
       })
-      .catch(() => {
-        wx.showToast({ title: '加载失败', icon: 'none' });
+      .catch(() => wx.showToast({ title: '加载失败', icon: 'none' }));
+  },
+
+  _formatPhoto(photo) {
+    if (photo.createTime) {
+      photo.createTimeFormatted = photo.createTime.replace('T', ' ').substring(0, 10);
+    }
+    return photo;
+  },
+
+  // ========== 评论 ==========
+
+  loadComments(refresh) {
+    if (this.data.commentLoading) return;
+    const page = refresh ? 1 : this.data.commentPage;
+    this.setData({ commentLoading: true });
+
+    request('/comment/list', 'GET', {
+      photoId: this._photoId,
+      page: page,
+      size: 20
+    }).then(res => {
+      const data = res.data || {};
+      const list = (data.list || []).map(c => this._formatComment(c));
+      this.setData({
+        comments: refresh ? list : this.data.comments.concat(list),
+        commentTotal: data.total || 0,
+        commentPage: page + 1,
+        commentHasMore: data.hasMore !== false,
+        commentLoading: false
+      });
+    }).catch(() => {
+      this.setData({ commentLoading: false });
+    });
+  },
+
+  onReachBottom() {
+    if (this.data.commentHasMore && !this.data.commentLoading) {
+      this.loadComments(false);
+    }
+  },
+
+  _formatComment(c) {
+    c.timeLabel = this._formatTime(c.createTime);
+    c.showReplies = false;
+    c.replies = c.replies || [];
+    return c;
+  },
+
+  _formatTime(timeStr) {
+    if (!timeStr) return '';
+    const t = new Date(timeStr.replace('T', ' '));
+    const now = new Date();
+    const diff = (now - t) / 1000;
+    if (diff < 60) return '刚刚';
+    if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+    if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+    if (diff < 172800) return '昨天';
+    const m = t.getMonth() + 1;
+    const d = t.getDate();
+    if (t.getFullYear() === now.getFullYear()) return m + '月' + d + '日';
+    return t.getFullYear() + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  },
+
+  // ========== 发表评论 ==========
+
+  onInputFocus() {
+    if (!checkLogin()) return;
+    this.setData({ inputFocus: true });
+  },
+
+  onInputBlur() {
+    setTimeout(() => {
+      this.setData({ inputFocus: false, replyMode: false, replyPlaceholder: '说点什么...' });
+    }, 150);
+  },
+
+  onInputChange(e) {
+    this.setData({ inputValue: e.detail.value });
+  },
+
+  onKeyboardHeight(e) {
+    this.setData({ keyboardHeight: e.detail.height || 0 });
+  },
+
+  onSendComment() {
+    const content = this.data.inputValue.trim();
+    if (!content) return;
+    if (!checkLogin()) return;
+
+    const body = {
+      photoId: this._photoId,
+      content: content,
+      parentId: this.data.replyParentId || 0,
+      replyToUserId: this.data.replyToUserId || 0
+    };
+
+    // 乐观更新
+    const userInfo = app.globalData.userInfo || {};
+    const optimistic = {
+      id: 'temp_' + Date.now(),
+      userId: userInfo.userId,
+      nickname: userInfo.nickname || '我',
+      avatarUrl: userInfo.avatarUrl || '',
+      content: content,
+      likeCount: 0,
+      liked: false,
+      replyCount: 0,
+      timeLabel: '刚刚',
+      replies: [],
+      showReplies: false
+    };
+
+    if (body.parentId === 0) {
+      this.setData({
+        comments: [optimistic, ...this.data.comments],
+        commentTotal: this.data.commentTotal + 1,
+        inputValue: '',
+        replyMode: false,
+        replyPlaceholder: '说点什么...',
+        replyParentId: 0,
+        replyToUserId: 0
+      });
+    } else {
+      this.setData({
+        inputValue: '',
+        replyMode: false,
+        replyPlaceholder: '说点什么...',
+        replyParentId: 0,
+        replyToUserId: 0
+      });
+    }
+
+    request('/comment/add', 'POST', body).then(res => {
+      // 替换乐观数据或刷新回复
+      if (body.parentId === 0) {
+        const real = this._formatComment(res.data);
+        const comments = this.data.comments.map(c => c.id === optimistic.id ? real : c);
+        this.setData({ comments });
+      } else {
+        this._refreshReplies(body.parentId);
+        // 更新父评论 replyCount
+        const comments = this.data.comments.map(c => {
+          if (String(c.id) === String(body.parentId)) {
+            c.replyCount = (c.replyCount || 0) + 1;
+          }
+          return c;
+        });
+        this.setData({ comments });
+      }
+    }).catch(() => {
+      // 回滚乐观更新
+      if (body.parentId === 0) {
+        const comments = this.data.comments.filter(c => c.id !== optimistic.id);
+        this.setData({ comments, commentTotal: this.data.commentTotal - 1 });
+      }
+      wx.showToast({ title: '发送失败', icon: 'none' });
+    });
+  },
+
+  // ========== 回复 ==========
+
+  onReplyTap(e) {
+    if (!checkLogin()) return;
+    const { id, nickname, parentId } = e.currentTarget.dataset;
+    // 如果是子评论的回复，parentId 指向顶级评论
+    const actualParent = parentId && parentId !== '0' ? parentId : id;
+    this.setData({
+      replyMode: true,
+      replyPlaceholder: '回复 @' + (nickname || '用户'),
+      replyParentId: actualParent,
+      replyToUserId: e.currentTarget.dataset.userId || 0,
+      inputFocus: true
+    });
+  },
+
+  // ========== 展开回复 ==========
+
+  onToggleReplies(e) {
+    const idx = e.currentTarget.dataset.idx;
+    const comment = this.data.comments[idx];
+    if (comment.showReplies) {
+      this.setData({ ['comments[' + idx + '].showReplies']: false });
+      return;
+    }
+    this._loadReplies(idx, comment.id);
+  },
+
+  _loadReplies(idx, commentId) {
+    request('/comment/replies', 'GET', { commentId, page: 1, size: 50 })
+      .then(res => {
+        const replies = (res.data.list || []).map(c => this._formatComment(c));
+        this.setData({
+          ['comments[' + idx + '].replies']: replies,
+          ['comments[' + idx + '].showReplies']: true
+        });
       });
   },
 
+  _refreshReplies(parentId) {
+    const idx = this.data.comments.findIndex(c => String(c.id) === String(parentId));
+    if (idx >= 0 && this.data.comments[idx].showReplies) {
+      this._loadReplies(idx, parentId);
+    }
+  },
+
+  // ========== 点赞 ==========
+
+  onLikeTap(e) {
+    if (!checkLogin()) return;
+    const { id, idx, replyIdx } = e.currentTarget.dataset;
+
+    // 乐观更新
+    let path, comment;
+    if (replyIdx !== undefined && replyIdx !== '') {
+      path = 'comments[' + idx + '].replies[' + replyIdx + ']';
+      comment = this.data.comments[idx].replies[replyIdx];
+    } else {
+      path = 'comments[' + idx + ']';
+      comment = this.data.comments[idx];
+    }
+
+    const newLiked = !comment.liked;
+    this.setData({
+      [path + '.liked']: newLiked,
+      [path + '.likeCount']: comment.likeCount + (newLiked ? 1 : -1)
+    });
+
+    request('/comment/like?commentId=' + id, 'POST').catch(() => {
+      // 回滚
+      this.setData({
+        [path + '.liked']: comment.liked,
+        [path + '.likeCount']: comment.likeCount
+      });
+    });
+  },
+
+  // ========== 删除 ==========
+
+  onCommentLongPress(e) {
+    const { id, userId, idx } = e.currentTarget.dataset;
+    const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
+    if (String(userId) !== String(myId)) return;
+
+    wx.showActionSheet({
+      itemList: ['删除'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          request('/comment/delete?commentId=' + id, 'POST').then(() => {
+            const comments = this.data.comments.filter(c => String(c.id) !== String(id));
+            this.setData({ comments, commentTotal: Math.max(0, this.data.commentTotal - 1) });
+          }).catch(() => wx.showToast({ title: '删除失败', icon: 'none' }));
+        }
+      }
+    });
+  },
+
+  // ========== 头像点击 → 私信 ==========
+
+  onAvatarTap(e) {
+    const userId = e.currentTarget.dataset.userId;
+    if (!userId) return;
+    const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
+    if (String(userId) === String(myId)) return;
+    if (!checkLogin()) return;
+    wx.navigateTo({
+      url: '/pages/chat/chat?userId=' + userId +
+        '&nickname=' + encodeURIComponent(e.currentTarget.dataset.nickname || '') +
+        '&avatarUrl=' + encodeURIComponent(e.currentTarget.dataset.avatarUrl || '')
+    });
+  },
+
+  // ========== 原有方法 ==========
+
   onSwiperChange(e) {
     const idx = e.detail.current;
-    this.setData({ current: idx, photo: this.data.photos[idx] });
+    const photo = this.data.photos[idx];
+    this._photoId = photo.id;
+    this.setData({ current: idx, photo });
+    this.loadComments(true);
   },
 
   previewImage() {
     const urls = this.data.photos.map(p => p.imageUrl);
-    wx.previewImage({
-      current: this.data.photo.imageUrl,
-      urls
+    wx.previewImage({ current: this.data.photo.imageUrl, urls });
+  },
+
+  onLocateOnMap() {
+    const p = this.data.photo;
+    if (!p.latitude || !p.longitude) return;
+    wx.navigateTo({
+      url: '/pages/map/map?focusLat=' + p.latitude +
+        '&focusLng=' + p.longitude +
+        '&focusImage=' + encodeURIComponent(p.thumbnailUrl || p.imageUrl) +
+        '&focusName=' + encodeURIComponent(p.locationName || '')
     });
   }
 });

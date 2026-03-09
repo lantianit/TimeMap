@@ -17,16 +17,134 @@
       <text class="info-value">{{photo.photoDate}}</text>
     </view>
     <view class="info-row">
-      <text class="info-label">拍摄地点</text>
-      <text class="info-value">{{photo.locationName}}</text>
+      <text class="info-label">上传时间</text>
+      <text class="info-value">{{photo.createTimeFormatted}}</text>
     </view>
-    <view class="info-row" wx:if="{{photo.description}}">
-      <text class="info-label">描述</text>
-      <text class="info-value">{{photo.description}}</text>
+    <view class="info-row location-row">
+      <text class="info-label">拍摄地点</text>
+      <view class="info-value-wrap">
+        <text class="info-value">{{photo.locationName}}</text>
+        <view class="location-map-btn" bindtap="onLocateOnMap" wx:if="{{photo.latitude && photo.longitude}}">
+          <image class="location-map-icon" src="/images/icon-locate.svg" />
+        </view>
+      </view>
     </view>
     <view class="info-row">
       <text class="info-label">上传者</text>
-      <text class="info-value">{{photo.nickname}}</text>
+      <text class="info-value">{{photo.nickname || '微信用户'}}</text>
+    </view>
+    <view class="info-row" wx:if="{{photo.description}}">
+      <text class="info-label">描述</text>
+      <text class="info-value desc-value">{{photo.description}}</text>
     </view>
   </view>
+
+  <!-- 评论区 -->
+  <view class="comment-section">
+    <view class="comment-header">
+      <text>评论 ({{commentTotal}})</text>
+    </view>
+
+    <!-- 评论列表 -->
+    <view class="comment-empty" wx:if="{{!comments.length && !commentLoading}}">
+      <text>还没有评论，来说两句吧</text>
+    </view>
+
+    <view class="comment-item" wx:for="{{comments}}" wx:key="id"
+      bindlongpress="onCommentLongPress"
+      data-id="{{item.id}}" data-user-id="{{item.userId}}" data-idx="{{index}}">
+      <!-- 头像 -->
+      <image class="comment-avatar" src="{{item.avatarUrl || '/images/icon-user.svg'}}"
+        bindtap="onAvatarTap"
+        data-user-id="{{item.userId}}"
+        data-nickname="{{item.nickname}}"
+        data-avatar-url="{{item.avatarUrl}}" />
+
+      <view class="comment-body">
+        <!-- 昵称 + 时间 -->
+        <view class="comment-top">
+          <text class="comment-nick">{{item.nickname || '匿名用户'}}</text>
+          <text class="comment-time">{{item.timeLabel}}</text>
+        </view>
+        <!-- 内容 -->
+        <text class="comment-content">{{item.content}}</text>
+        <!-- 操作栏 -->
+        <view class="comment-actions">
+          <view class="comment-like {{item.liked ? 'liked' : ''}}"
+            bindtap="onLikeTap" data-id="{{item.id}}" data-idx="{{index}}">
+            <text>{{item.liked ? '♥' : '♡'}}</text>
+            <text wx:if="{{item.likeCount > 0}}">{{item.likeCount}}</text>
+          </view>
+          <view class="comment-reply-btn" bindtap="onReplyTap"
+            data-id="{{item.id}}" data-nickname="{{item.nickname}}"
+            data-user-id="{{item.userId}}" data-parent-id="0">
+            <text>回复</text>
+          </view>
+        </view>
+
+        <!-- 展开回复 -->
+        <view class="comment-expand" wx:if="{{item.replyCount > 0}}"
+          bindtap="onToggleReplies" data-idx="{{index}}">
+          <text>{{item.showReplies ? '收起回复' : '展开' + item.replyCount + '条回复'}} {{item.showReplies ? '▴' : '▾'}}</text>
+        </view>
+
+        <!-- 子评论 -->
+        <block wx:if="{{item.showReplies && item.replies.length}}">
+          <view class="reply-item" wx:for="{{item.replies}}" wx:for-item="reply" wx:for-index="ri" wx:key="id"
+            bindlongpress="onCommentLongPress"
+            data-id="{{reply.id}}" data-user-id="{{reply.userId}}" data-idx="{{index}}">
+            <image class="reply-avatar" src="{{reply.avatarUrl || '/images/icon-user.svg'}}"
+              bindtap="onAvatarTap"
+              data-user-id="{{reply.userId}}"
+              data-nickname="{{reply.nickname}}"
+              data-avatar-url="{{reply.avatarUrl}}" />
+            <view class="reply-body">
+              <view class="comment-top">
+                <text class="comment-nick">{{reply.nickname}}</text>
+                <text class="reply-to" wx:if="{{reply.replyToNickname}}"> 回复 @{{reply.replyToNickname}}</text>
+                <text class="comment-time">{{reply.timeLabel}}</text>
+              </view>
+              <text class="comment-content">{{reply.content}}</text>
+              <view class="comment-actions">
+                <view class="comment-like {{reply.liked ? 'liked' : ''}}"
+                  bindtap="onLikeTap" data-id="{{reply.id}}" data-idx="{{index}}" data-reply-idx="{{ri}}">
+                  <text>{{reply.liked ? '♥' : '♡'}}</text>
+                  <text wx:if="{{reply.likeCount > 0}}">{{reply.likeCount}}</text>
+                </view>
+                <view class="comment-reply-btn" bindtap="onReplyTap"
+                  data-id="{{reply.id}}" data-nickname="{{reply.nickname}}"
+                  data-user-id="{{reply.userId}}" data-parent-id="{{item.id}}">
+                  <text>回复</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="comment-loading" wx:if="{{commentLoading}}"><text>加载中...</text></view>
+    <view class="comment-loading" wx:if="{{!commentHasMore && comments.length}}"><text>没有更多评论了</text></view>
+  </view>
+
+  <!-- 底部占位（给固定输入栏留空间） -->
+  <view style="height: 120rpx;"></view>
+</view>
+
+<!-- 固定底部输入栏 -->
+<view class="input-bar" style="bottom: {{keyboardHeight}}px;">
+  <image class="input-bar-avatar" src="{{photo.avatarUrl || '/images/icon-user.svg'}}" />
+  <input class="input-bar-input"
+    placeholder="{{replyPlaceholder}}"
+    value="{{inputValue}}"
+    bindinput="onInputChange"
+    bindfocus="onInputFocus"
+    bindblur="onInputBlur"
+    focus="{{inputFocus}}"
+    confirm-type="send"
+    bindconfirm="onSendComment"
+    adjust-position="{{false}}"
+    bindkeyboardheightchange="onKeyboardHeight" />
+  <view class="input-bar-send {{inputValue ? 'active' : ''}}" bindtap="onSendComment">发送</view>
 </view>

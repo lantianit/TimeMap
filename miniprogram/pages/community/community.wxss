@@ -9,13 +9,22 @@
   height: 100vh;
 }
 
-/* ===== 区域名称栏 ===== */
+/* ===== 顶部栏 ===== */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  background: #f5f5f5;
+}
+
+/* ===== 区域名称 ===== */
 .district-bar {
   display: flex;
   align-items: center;
-  padding: 16rpx 32rpx;
   gap: 8rpx;
-  background: #f5f5f5;
+  flex-shrink: 1;
+  min-width: 0;
 }
 .district-bar:active {
   opacity: 0.7;
@@ -38,6 +47,44 @@
   color: #999;
   flex-shrink: 0;
   margin-left: 4rpx;
+}
+
+/* ===== 排序切换 ===== */
+.sort-toggle {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 24rpx;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+.sort-item {
+  height: 48rpx;
+  line-height: 48rpx;
+  padding: 0 20rpx;
+  font-size: 22rpx;
+  color: #888;
+  border-radius: 24rpx;
+  white-space: nowrap;
+}
+.sort-item.active {
+  color: #fff;
+  background: #07c160;
+  font-weight: 600;
+}
+.sort-item:active {
+  opacity: 0.7;
+}
+
+/* ===== 统计摘要 ===== */
+.stats-bar {
+  padding: 0 24rpx 12rpx;
+  background: #f5f5f5;
+}
+.stats-text {
+  font-size: 22rpx;
+  color: #999;
+  line-height: 1.4;
 }
 
 /* ===== 月份快捷导航 ===== */

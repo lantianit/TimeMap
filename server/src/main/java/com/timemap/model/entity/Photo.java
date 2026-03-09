@@ -32,6 +32,9 @@ public class Photo {
     /** 地点名称 */
     private String locationName;
 
+    /** 行政区划（区/县） */
+    private String district;
+
     /** 拍摄日期 */
     private LocalDate photoDate;
 

@@ -16,9 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -34,7 +32,7 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
     public PhotoDetailResponse upload(MultipartFile file, Long userId,
                                       Double longitude, Double latitude,
                                       String locationName, String photoDate,
-                                      String description) {
+                                      String description, String district) {
         try {
             String imageUrl = cosService.upload(file);
 
@@ -45,6 +43,7 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
             photo.setLongitude(longitude);
             photo.setLatitude(latitude);
             photo.setLocationName(locationName != null ? locationName : "");
+            photo.setDistrict(district != null ? district : "");
             photo.setPhotoDate(LocalDate.parse(photoDate, DateTimeFormatter.ISO_LOCAL_DATE));
             photo.setDescription(description != null ? description : "");
 
@@ -104,15 +103,27 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
     }
 
     @Override
-    public com.timemap.model.dto.CommunityPageResponse findCommunity(double lat, double lng, double radiusKm, int page, int size) {
+    public com.timemap.model.dto.CommunityPageResponse findCommunity(String district, int page, int size, String sortBy) {
+        if (sortBy == null || sortBy.isEmpty()) sortBy = "photoDate";
+        if (district == null) district = "";
         int offset = (page - 1) * size;
-        var list = photoMapper.findCommunity(lat, lng, radiusKm, offset, size);
-        long total = photoMapper.countCommunity(lat, lng, radiusKm);
+        var list = photoMapper.findCommunity(offset, size, sortBy, district);
+        long total = photoMapper.countCommunity(district);
         var resp = new com.timemap.model.dto.CommunityPageResponse();
         resp.setList(list);
         resp.setTotal(total);
         resp.setHasMore(offset + size < total);
         return resp;
+    }
+
+    @Override
+    public Map<String, Long> getAreaStats(String district) {
+        long total = photoMapper.countByDistrict(district);
+        long today = photoMapper.countTodayByDistrict(district);
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("total", total);
+        stats.put("today", today);
+        return stats;
     }
 
 }

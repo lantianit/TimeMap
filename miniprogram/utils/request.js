@@ -51,7 +51,14 @@ function uploadFile(url, filePath, formData) {
         'Authorization': app.globalData.token ? `Bearer ${app.globalData.token}` : ''
       },
       success(res) {
-        const data = JSON.parse(res.data);
+        let data;
+        try {
+          data = JSON.parse(res.data);
+        } catch (e) {
+          console.error('[uploadFile] 响应解析失败, statusCode:', res.statusCode, 'data:', res.data);
+          reject({ code: -1, message: '服务器响应异常' });
+          return;
+        }
         if (data.code === 200) {
           resolve(data);
         } else if (data.code === 401) {

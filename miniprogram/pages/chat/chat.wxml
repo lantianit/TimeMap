@@ -1,0 +1,49 @@
+<view class="chat-page">
+  <!-- 加载更多 -->
+  <scroll-view class="msg-list" scroll-y scroll-into-view="{{scrollIntoView}}"
+    bindscrolltoupper="onScrollToUpper"
+    style="height: calc(100vh - 120rpx - {{keyboardHeight}}px - env(safe-area-inset-bottom));">
+
+    <view class="load-more" wx:if="{{loading}}"><text>加载中...</text></view>
+    <view class="load-more" wx:if="{{!hasMore && messages.length > 30}}"><text>没有更多消息了</text></view>
+
+    <block wx:for="{{messages}}" wx:key="id">
+      <view class="msg-row {{item.isMine ? 'mine' : 'other'}}" id="msg-{{index}}">
+        <!-- 对方头像 -->
+        <image wx:if="{{!item.isMine}}" class="msg-avatar"
+          src="{{otherAvatarUrl || '/images/icon-user.svg'}}" />
+
+        <view class="msg-bubble-wrap">
+          <view class="msg-bubble {{item.isMine ? 'bubble-mine' : 'bubble-other'}}">
+            <text>{{item.content}}</text>
+          </view>
+          <view class="msg-meta">
+            <text class="msg-time">{{item.timeLabel}}</text>
+            <text class="msg-fail" wx:if="{{item.sendFail}}" bindtap="onResend" data-idx="{{index}}">发送失败，点击重试</text>
+          </view>
+        </view>
+
+        <!-- 我的头像 -->
+        <image wx:if="{{item.isMine}}" class="msg-avatar"
+          src="{{item.fromAvatarUrl || '/images/icon-user.svg'}}" />
+      </view>
+    </block>
+
+    <view class="msg-empty" wx:if="{{!messages.length && !loading}}">
+      <text>暂无消息，说点什么吧</text>
+    </view>
+  </scroll-view>
+
+  <!-- 输入栏 -->
+  <view class="chat-input-bar" style="bottom: {{keyboardHeight}}px;">
+    <input class="chat-input"
+      placeholder="输入消息..."
+      value="{{inputValue}}"
+      bindinput="onInputChange"
+      confirm-type="send"
+      bindconfirm="onSend"
+      adjust-position="{{false}}"
+      bindkeyboardheightchange="onKeyboardHeight" />
+    <view class="chat-send {{inputValue ? 'active' : ''}}" bindtap="onSend">发送</view>
+  </view>
+</view>

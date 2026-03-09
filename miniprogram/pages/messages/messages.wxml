@@ -1,0 +1,25 @@
+<view class="messages-page">
+  <view class="conv-empty" wx:if="{{!conversations.length && !loading}}">
+    <text>暂无消息</text>
+  </view>
+
+  <view class="conv-item" wx:for="{{conversations}}" wx:key="userId"
+    bindtap="onConversationTap" data-item="{{item}}">
+    <view class="conv-avatar-wrap">
+      <image class="conv-avatar" src="{{item.avatarUrl || '/images/icon-user.svg'}}" />
+      <view class="conv-badge" wx:if="{{item.unreadCount > 0}}">
+        <text>{{item.unreadCount > 99 ? '99+' : item.unreadCount}}</text>
+      </view>
+    </view>
+
+    <view class="conv-body">
+      <view class="conv-top">
+        <text class="conv-nick">{{item.nickname || '用户'}}</text>
+        <text class="conv-time">{{item.timeLabel}}</text>
+      </view>
+      <text class="conv-last">{{item.lastMessage}}</text>
+    </view>
+  </view>
+
+  <view class="conv-loading" wx:if="{{loading}}"><text>加载中...</text></view>
+</view>

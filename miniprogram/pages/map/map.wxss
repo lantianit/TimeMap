@@ -126,6 +126,10 @@
 .district-text {
   font-size: 26rpx; color: #333; font-weight: 600;
 }
+.district-stats {
+  font-size: 20rpx; color: #07c160; margin-left: 12rpx;
+  font-weight: 400;
+}
 
 /* ===== 右侧工具栏 ===== */
 .right-toolbar {

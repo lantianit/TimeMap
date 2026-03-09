@@ -5,18 +5,18 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 @Data
-public class CommunityPhotoResponse {
+public class MessageResponse {
     @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
     @JsonSerialize(using = ToStringSerializer.class)
-    private Long userId;
-    private String imageUrl;
-    private String thumbnailUrl;
-    private Double longitude;
-    private Double latitude;
-    private String locationName;
-    private String photoDate;
+    private Long fromUserId;
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long toUserId;
+    private String content;
+    private String msgType;
+    private Integer readStatus;
     private String createTime;
-    private String nickname;
-    private String avatarUrl;
+    // 发送者信息
+    private String fromNickname;
+    private String fromAvatarUrl;
 }
