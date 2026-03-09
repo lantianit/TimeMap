@@ -35,31 +35,56 @@ Page({
   },
 
   loadBatch(ids) {
+    console.log('[detail] loadBatch 开始, ids:', ids);
     request('/photo/batch', 'GET', { ids })
       .then((res) => {
+        console.log('[detail] loadBatch 响应:', res);
         const photos = (res.data || []).map(p => this._formatPhoto(p));
+        console.log('[detail] 格式化后的 photos:', photos);
         if (!photos.length) { wx.showToast({ title: '照片不存在', icon: 'none' }); return; }
         this._photoId = photos[0].id;
         this.setData({ photos, total: photos.length, current: 0, photo: photos[0] });
+        console.log('[detail] setData 完成, photo.liked:', this.data.photo.liked, 'photo.likeCount:', this.data.photo.likeCount);
         this.loadComments(true);
       })
-      .catch(() => wx.showToast({ title: '加载失败', icon: 'none' }));
+      .catch((err) => {
+        console.error('[detail] loadBatch 失败:', err);
+        wx.showToast({ title: '加载失败', icon: 'none' });
+      });
   },
 
   loadDetail(id) {
+    console.log('[detail] loadDetail 开始, id:', id);
     request('/photo/detail/' + id, 'GET')
       .then((res) => {
+        console.log('[detail] loadDetail 响应:', res);
         const photo = this._formatPhoto(res.data || {});
+        console.log('[detail] 格式化后的 photo:', photo);
         this.setData({ photos: [photo], total: 1, current: 0, photo });
+        console.log('[detail] setData 完成, photo.liked:', this.data.photo.liked, 'photo.likeCount:', this.data.photo.likeCount);
         this.loadComments(true);
       })
-      .catch(() => wx.showToast({ title: '加载失败', icon: 'none' }));
+      .catch((err) => {
+        console.error('[detail] loadDetail 失败:', err);
+        wx.showToast({ title: '加载失败', icon: 'none' });
+      });
   },
 
   _formatPhoto(photo) {
+    console.log('[detail] _formatPhoto 输入:', photo);
     if (photo.createTime) {
       photo.createTimeFormatted = photo.createTime.replace('T', ' ').substring(0, 10);
     }
+    // 确保点赞字段有默认值
+    if (photo.likeCount === undefined || photo.likeCount === null) {
+      console.log('[detail] likeCount 为空，设置默认值 0');
+      photo.likeCount = 0;
+    }
+    if (photo.liked === undefined || photo.liked === null) {
+      console.log('[detail] liked 为空，设置默认值 false');
+      photo.liked = false;
+    }
+    console.log('[detail] _formatPhoto 输出:', photo);
     return photo;
   },
 
@@ -348,6 +373,43 @@ Page({
         '&focusLng=' + p.longitude +
         '&focusImage=' + encodeURIComponent(p.thumbnailUrl || p.imageUrl) +
         '&focusName=' + encodeURIComponent(p.locationName || '')
+    });
+  },
+
+  // ========== 照片点赞 ==========
+
+  onPhotoLikeTap() {
+    if (!checkLogin()) return;
+    const photo = this.data.photo;
+    const currentIdx = this.data.current;
+    const newLiked = !photo.liked;
+    const newLikeCount = photo.likeCount + (newLiked ? 1 : -1);
+
+    // 乐观更新：同时更新 photo 和 photos 数组
+    this.setData({
+      'photo.liked': newLiked,
+      'photo.likeCount': newLikeCount,
+      [`photos[${currentIdx}].liked`]: newLiked,
+      [`photos[${currentIdx}].likeCount`]: newLikeCount
+    });
+
+    request('/photo/like?photoId=' + this._photoId, 'POST').then(res => {
+      const data = res.data || {};
+      // 更新为服务器返回的真实值
+      this.setData({
+        'photo.liked': data.liked,
+        'photo.likeCount': data.likeCount,
+        [`photos[${currentIdx}].liked`]: data.liked,
+        [`photos[${currentIdx}].likeCount`]: data.likeCount
+      });
+    }).catch(() => {
+      // 回滚
+      this.setData({
+        'photo.liked': photo.liked,
+        'photo.likeCount': photo.likeCount,
+        [`photos[${currentIdx}].liked`]: photo.liked,
+        [`photos[${currentIdx}].likeCount`]: photo.likeCount
+      });
     });
   }
 });

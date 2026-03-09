@@ -128,8 +128,10 @@
         <cover-view class="photo-callout">
           <cover-view class="photo-card">
             <cover-image class="photo-thumb" src="{{item.thumbUrl}}" />
-            <cover-view class="photo-count" wx:if="{{item.count > 1}}">{{item.count > 99 ? '99+' : item.count}}</cover-view>
-            <cover-view class="photo-comment" wx:if="{{item.commentCount > 0}}">💬{{item.commentCount > 99 ? '99+' : item.commentCount}}</cover-view>
+            <cover-view class="photo-bar" wx:if="{{item.count > 1 || item.commentCount > 0}}">
+              <cover-view class="photo-bar-comment" wx:if="{{item.commentCount > 0}}">💬 {{item.commentCount > 99 ? '99+' : item.commentCount}}</cover-view>
+              <cover-view class="photo-bar-count" wx:if="{{item.count > 1}}">{{item.count > 99 ? '99+' : item.count}}</cover-view>
+            </cover-view>
           </cover-view>
           <cover-view class="photo-arrow"></cover-view>
         </cover-view>

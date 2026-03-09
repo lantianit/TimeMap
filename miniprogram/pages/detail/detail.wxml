@@ -10,6 +10,14 @@
     <view class="photo-counter" wx:if="{{total > 1}}">{{current + 1}} / {{total}}</view>
   </view>
 
+  <!-- 点赞栏 -->
+  <view class="like-bar">
+    <view class="like-btn {{photo.liked ? 'liked' : ''}}" bindtap="onPhotoLikeTap">
+      <text class="like-icon">{{photo.liked ? '♥' : '♡'}}</text>
+      <text class="like-text">{{photo.likeCount > 0 ? photo.likeCount : '点赞'}}</text>
+    </view>
+  </view>
+
   <!-- 信息卡片 -->
   <view class="info-card">
     <view class="info-row">

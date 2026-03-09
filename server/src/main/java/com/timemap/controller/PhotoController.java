@@ -5,12 +5,14 @@ import com.timemap.model.dto.NearbyPhotoResponse;
 import com.timemap.model.dto.PhotoDetailResponse;
 import com.timemap.service.PhotoService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/photo")
 @RequiredArgsConstructor
@@ -49,17 +51,34 @@ public class PhotoController {
     }
 
     @GetMapping("/detail/{id}")
-    public Result<PhotoDetailResponse> detail(@PathVariable Long id) {
-        PhotoDetailResponse photo = photoService.getDetail(id);
+    public Result<PhotoDetailResponse> detail(
+            @PathVariable Long id,
+            @RequestAttribute(value = "userId", required = false) Long userId) {
+        log.info("[PhotoController] detail 请求: photoId={}, userId={}", id, userId);
+        PhotoDetailResponse photo = photoService.getDetail(id, userId);
         if (photo == null) {
             return Result.fail("照片不存在");
         }
+        log.info("[PhotoController] detail 响应: photoId={}, liked={}, likeCount={}", 
+                id, photo.getLiked(), photo.getLikeCount());
         return Result.ok(photo);
     }
 
+    @PostMapping("/like")
+    public Result<Map<String, Object>> likePhoto(
+            @RequestParam("photoId") Long photoId,
+            @RequestAttribute("userId") Long userId) {
+        Map<String, Object> result = photoService.toggleLike(photoId, userId);
+        return Result.ok(result);
+    }
+
     @GetMapping("/batch")
-    public Result<List<PhotoDetailResponse>> batch(@RequestParam("ids") String ids) {
-        List<PhotoDetailResponse> list = photoService.getBatchDetail(ids);
+    public Result<List<PhotoDetailResponse>> batch(
+            @RequestParam("ids") String ids,
+            @RequestAttribute(value = "userId", required = false) Long userId) {
+        log.info("[PhotoController] batch 请求: ids={}, userId={}", ids, userId);
+        List<PhotoDetailResponse> list = photoService.getBatchDetail(ids, userId);
+        log.info("[PhotoController] batch 响应: 返回 {} 张照片", list.size());
         return Result.ok(list);
     }
 

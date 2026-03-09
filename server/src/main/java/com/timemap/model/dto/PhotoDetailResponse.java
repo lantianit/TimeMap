@@ -20,4 +20,6 @@ public class PhotoDetailResponse {
     private String createTime;
     private String nickname;
     private String avatarUrl;
+    private Integer likeCount;
+    private Boolean liked;
 }

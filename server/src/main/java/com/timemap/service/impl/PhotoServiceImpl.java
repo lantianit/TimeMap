@@ -1,11 +1,14 @@
 package com.timemap.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.timemap.mapper.PhotoLikeMapper;
 import com.timemap.mapper.PhotoMapper;
 import com.timemap.mapper.UserMapper;
 import com.timemap.model.dto.NearbyPhotoResponse;
 import com.timemap.model.dto.PhotoDetailResponse;
 import com.timemap.model.entity.Photo;
+import com.timemap.model.entity.PhotoLike;
 import com.timemap.model.entity.User;
 import com.timemap.service.CosService;
 import com.timemap.service.PhotoService;
@@ -27,6 +30,7 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
     private final PhotoMapper photoMapper;
     private final UserMapper userMapper;
     private final CosService cosService;
+    private final PhotoLikeMapper photoLikeMapper;
 
     @Override
     public PhotoDetailResponse upload(MultipartFile file, Long userId,
@@ -64,6 +68,12 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
 
     @Override
     public PhotoDetailResponse getDetail(Long id) {
+        return getDetail(id, null);
+    }
+
+    @Override
+    public PhotoDetailResponse getDetail(Long id, Long userId) {
+        log.info("getDetail 调用: photoId={}, userId={}", id, userId);
         Photo photo = this.getById(id);
         if (photo == null) return null;
 
@@ -84,11 +94,60 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
             resp.setNickname(user.getNickname());
             resp.setAvatarUrl(user.getAvatarUrl());
         }
+
+        // 点赞数
+        long likeCount = photoLikeMapper.selectCount(
+                new LambdaQueryWrapper<PhotoLike>().eq(PhotoLike::getPhotoId, id));
+        resp.setLikeCount(Math.toIntExact(likeCount));
+        log.info("照片 {} 的点赞数: {}", id, likeCount);
+
+        // 当前用户是否已点赞
+        if (userId != null) {
+            long liked = photoLikeMapper.selectCount(
+                    new LambdaQueryWrapper<PhotoLike>()
+                            .eq(PhotoLike::getPhotoId, id)
+                            .eq(PhotoLike::getUserId, userId));
+            resp.setLiked(liked > 0);
+            log.info("用户 {} 对照片 {} 的点赞状态: {}", userId, id, liked > 0);
+        } else {
+            resp.setLiked(false);
+            log.info("未登录用户查看照片 {}, liked 设置为 false", id);
+        }
+
+        log.info("getDetail 返回: photoId={}, liked={}, likeCount={}", id, resp.getLiked(), resp.getLikeCount());
         return resp;
     }
 
     @Override
-    public List<PhotoDetailResponse> getBatchDetail(String ids) {
+    public Map<String, Object> toggleLike(Long photoId, Long userId) {
+        LambdaQueryWrapper<PhotoLike> wrapper = new LambdaQueryWrapper<PhotoLike>()
+                .eq(PhotoLike::getPhotoId, photoId)
+                .eq(PhotoLike::getUserId, userId);
+        PhotoLike existing = photoLikeMapper.selectOne(wrapper);
+
+        boolean liked;
+        if (existing != null) {
+            photoLikeMapper.deleteById(existing.getId());
+            liked = false;
+        } else {
+            PhotoLike like = new PhotoLike();
+            like.setPhotoId(photoId);
+            like.setUserId(userId);
+            photoLikeMapper.insert(like);
+            liked = true;
+        }
+
+        long likeCount = photoLikeMapper.selectCount(
+                new LambdaQueryWrapper<PhotoLike>().eq(PhotoLike::getPhotoId, photoId));
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("liked", liked);
+        result.put("likeCount", likeCount);
+        return result;
+    }
+
+    @Override
+    public List<PhotoDetailResponse> getBatchDetail(String ids, Long userId) {
         return Arrays.stream(ids.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
@@ -97,7 +156,7 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
                     catch (NumberFormatException e) { return null; }
                 })
                 .filter(Objects::nonNull)
-                .map(this::getDetail)
+                .map(id -> this.getDetail(id, userId))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
