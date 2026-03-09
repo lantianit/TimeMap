@@ -17,6 +17,7 @@ public interface PhotoMapper extends BaseMapper<Photo> {
         <script>
         SELECT id, image_url, thumbnail_url, longitude, latitude,
                location_name, photo_date,
+               (SELECT COUNT(*) FROM t_comment WHERE photo_id = t_photo.id AND deleted = 0) AS comment_count,
                (6371 * 2 * ASIN(SQRT(
                    POW(SIN(RADIANS(latitude - #{lat}) / 2), 2) +
                    COS(RADIANS(#{lat})) * COS(RADIANS(latitude)) *

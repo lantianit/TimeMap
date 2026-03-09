@@ -36,9 +36,11 @@
   display: flex; flex-direction: column; align-items: center;
 }
 .photo-card {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.85);
+  border: 2rpx solid #fff;
   border-radius: 16rpx;
-  padding: 10rpx;
+  padding: 8rpx;
+  box-shadow: 8rpx 8rpx 24rpx rgba(0, 0, 0, 0.08);
   position: relative;
 }
 .photo-thumb {
@@ -46,17 +48,24 @@
   border-radius: 12rpx;
 }
 .photo-count {
-  position: absolute; top: -8rpx; right: -8rpx;
+  position: absolute; top: -4rpx; right: -4rpx;
   min-width: 32rpx; height: 32rpx; line-height: 32rpx;
-  background: #07c160; color: #fff;
-  font-size: 20rpx; text-align: center;
-  border-radius: 16rpx; padding: 0 8rpx;
+  background: #165DFF; color: #fff;
+  font-size: 20rpx; font-weight: 500; text-align: center;
+  border-radius: 999rpx; padding: 0 8rpx;
+}
+.photo-comment {
+  position: absolute; bottom: -4rpx; left: -4rpx;
+  min-width: 32rpx; height: 32rpx; line-height: 32rpx;
+  background: rgba(0, 0, 0, 0.6); color: #fff;
+  font-size: 20rpx; font-weight: 400; text-align: center;
+  border-radius: 999rpx; padding: 0 8rpx;
 }
 .photo-arrow {
   width: 0; height: 0;
   border-left: 12rpx solid transparent;
   border-right: 12rpx solid transparent;
-  border-top: 12rpx solid #fff;
+  border-top: 12rpx solid rgba(255, 255, 255, 0.85);
 }
 
 /* 待上传照片标记：淡绿色卡片 */

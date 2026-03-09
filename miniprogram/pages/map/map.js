@@ -530,9 +530,10 @@ Page({
 
           const thumbUrl = first.thumbnailUrl || first.imageUrl || '';
           const count = group.length;
+          const commentCount = group.reduce((sum, p) => sum + (p.commentCount || 0), 0);
 
           photoMarkers.push({
-            id, thumbUrl, count,
+            id, thumbUrl, count, commentCount,
             locationName: first.locationName || ''
           });
 
