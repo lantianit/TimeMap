@@ -23,6 +23,11 @@ public class JwtInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        // 已被 AdminWebAuthInterceptor 认证的 Web 管理端请求，直接放行
+        if (Boolean.TRUE.equals(request.getAttribute("isWebAdmin"))) {
+            return true;
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             writeUnauthorized(response, "未提供Token");
