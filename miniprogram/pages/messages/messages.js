@@ -4,17 +4,20 @@ const TYPE_LABELS = {
   comment: '评论了你的照片',
   reply: '回复了你的评论',
   photo_like: '赞了你的照片',
-  comment_like: '赞了你的评论'
+  comment_like: '赞了你的评论',
+  report_result: '处理了你的举报',
+  content_removed: '你的内容被移除',
+  warning: '向你发出警告',
+  punishment: '对你执行了处罚',
+  appeal_result: '处理了你的申诉'
 };
 
 Page({
   data: {
     activeTab: 'chat',
-    // 私信
     conversations: [],
     loading: false,
     chatUnread: 0,
-    // 互动
     notifications: [],
     notifLoading: false,
     notifPage: 1,
@@ -53,7 +56,6 @@ Page({
 
   onTabNotification() {
     this.setData({ activeTab: 'notification' });
-    // 进入互动 tab 即标记全部已读
     if (this.data.notifUnread > 0) {
       request('/notification/readAll', 'POST').then(() => {
         this.setData({ notifUnread: 0 });
@@ -123,6 +125,18 @@ Page({
 
   onNotifTap(e) {
     const item = e.currentTarget.dataset.item;
+    if (item.type === 'report_result') {
+      wx.navigateTo({ url: '/pages/my-reports/my-reports' });
+      return;
+    }
+    if (item.type === 'content_removed' || item.type === 'warning' || item.type === 'punishment') {
+      wx.navigateTo({ url: '/pages/my-violations/my-violations' });
+      return;
+    }
+    if (item.type === 'appeal_result') {
+      wx.navigateTo({ url: '/pages/my-reports/my-reports' });
+      return;
+    }
     if (item.photoId) {
       wx.navigateTo({ url: '/pages/detail/detail?id=' + item.photoId });
     }

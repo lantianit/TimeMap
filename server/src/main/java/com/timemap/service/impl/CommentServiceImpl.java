@@ -124,8 +124,21 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public void deleteComment(Long commentId, Long userId) {
+        deleteCommentInternal(commentId, userId, true);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCommentByAdmin(Long commentId) {
+        deleteCommentInternal(commentId, null, false);
+    }
+
+    private void deleteCommentInternal(Long commentId, Long userId, boolean checkOwner) {
         Comment comment = commentMapper.selectById(commentId);
-        if (comment == null || !comment.getUserId().equals(userId)) {
+        if (comment == null) {
+            throw new RuntimeException("评论不存在");
+        }
+        if (checkOwner && !comment.getUserId().equals(userId)) {
             throw new RuntimeException("无权删除");
         }
 

@@ -1,0 +1,62 @@
+<view class="page">
+  <view class="empty" wx:if="{{!reports.length && !loading}}">
+    <text>你还没有提交过举报</text>
+  </view>
+
+  <view class="list" wx:if="{{reports.length}}">
+    <view class="card" wx:for="{{reports}}" wx:key="id">
+      <view class="card-top">
+        <text class="target">{{item.targetLabel}}</text>
+        <text class="status status-{{item.status}}">{{item.statusLabel}}</text>
+      </view>
+      <view class="card-content">
+        <image class="thumb" wx:if="{{item.targetImageUrl}}"
+          src="{{item.targetImageUrl}}" mode="aspectFill" />
+        <view class="card-info">
+          <view class="preview" wx:if="{{item.targetPreview}}">
+            <text>{{item.targetPreview}}</text>
+          </view>
+          <view class="row">
+            <text class="label">原因</text>
+            <text class="value">{{item.reason}}</text>
+          </view>
+          <view class="row">
+            <text class="label">时间</text>
+            <text class="value">{{item.createTimeLabel}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="result" wx:if="{{item.handleResult}}">
+        <text class="result-label">处理结果</text>
+        <text class="result-text">{{item.handleResult}}</text>
+      </view>
+      <!-- 被驳回的举报可申诉 -->
+      <view class="appeal-btn" wx:if="{{item.status === 2}}" bindtap="onAppeal" data-item="{{item}}">
+        <text>申诉</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+  <view class="loading" wx:if="{{!hasMore && reports.length}}">
+    <text>没有更多了</text>
+  </view>
+
+  <!-- 申诉弹窗 -->
+  <view class="report-mask" wx:if="{{showAppealDialog}}" bindtap="onAppealCancel">
+    <view class="report-dialog" catchtap="">
+      <view class="report-dialog-title">申诉原因</view>
+      <textarea class="report-dialog-textarea"
+        placeholder="请说明你认为举报不应被驳回的原因..."
+        value="{{appealReason}}"
+        bindinput="onAppealInput"
+        maxlength="1000" />
+      <view class="report-dialog-btns">
+        <view class="report-dialog-btn cancel" bindtap="onAppealCancel">取消</view>
+        <view class="report-dialog-btn confirm" bindtap="onAppealSubmit">提交申诉</view>
+      </view>
+    </view>
+  </view>
+</view>

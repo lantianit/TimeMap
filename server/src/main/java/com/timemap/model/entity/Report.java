@@ -15,6 +15,9 @@ public class Report {
     private String reason;
     private String description;
     private Integer status;
+    private String handleResult;
+    private Long handledBy;
+    private LocalDateTime handledTime;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     @TableField(fill = FieldFill.INSERT_UPDATE)

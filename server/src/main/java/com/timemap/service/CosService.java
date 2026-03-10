@@ -21,6 +21,23 @@ public class CosService {
     private final COSClient cosClient;
     private final CosConfig cosConfig;
 
+    public void deleteByUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) return;
+        try {
+            String host = cosConfig.getBucket() + ".cos." + cosConfig.getRegion() + ".myqcloud.com/";
+            int idx = fileUrl.indexOf(host);
+            if (idx < 0) {
+                log.warn("COS URL 格式不匹配，跳过删除: {}", fileUrl);
+                return;
+            }
+            String key = fileUrl.substring(idx + host.length());
+            cosClient.deleteObject(cosConfig.getBucket(), key);
+            log.info("COS 删除成功: {}", key);
+        } catch (Exception e) {
+            log.error("COS 删除失败: {}", fileUrl, e);
+        }
+    }
+
     /**
      * 上传文件到 COS，返回访问 URL
      */

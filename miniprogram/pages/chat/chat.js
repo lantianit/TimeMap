@@ -571,5 +571,28 @@ Page({
       scrollToBottom: true
     });
     this._sendMessage(msg.content);
+  },
+
+  onMessageLongPress(e) {
+    const messageId = e.currentTarget.dataset.id;
+    const isMine = e.currentTarget.dataset.isMine;
+    if (isMine) return;
+
+    wx.showActionSheet({
+      itemList: ['举报此消息'],
+      success: () => {
+        const reasons = ['色情低俗', '违法违规', '侵权', '虚假信息', '人身攻击', '其他'];
+        wx.showActionSheet({
+          itemList: reasons,
+          success: (res) => {
+            const reason = reasons[res.tapIndex];
+            request('/report/submit?targetType=message&targetId=' + messageId
+              + '&reason=' + encodeURIComponent(reason), 'POST')
+              .then(() => { wx.showToast({ title: '举报已提交', icon: 'success' }); })
+              .catch((err) => { wx.showToast({ title: (err && err.message) || '举报失败', icon: 'none' }); });
+          }
+        });
+      }
+    });
   }
 });

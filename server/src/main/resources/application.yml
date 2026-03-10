@@ -45,3 +45,6 @@ jwt:
 # 腾讯地图配置
 tencent-map:
   key: ${TENCENT_MAP_KEY:}
+
+admin:
+  user-ids: ${ADMIN_USER_IDS:}

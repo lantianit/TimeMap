@@ -1,0 +1,88 @@
+<view class="page">
+  <!-- 快捷入口 -->
+  <view class="shortcuts" wx:if="{{isAdmin}}">
+    <view class="shortcut-btn" bindtap="onGoAggregated">聚合视图</view>
+    <view class="shortcut-btn" bindtap="onGoAppeals">申诉处理</view>
+    <view class="shortcut-btn" bindtap="onGoLogs">操作日志</view>
+  </view>
+
+  <!-- 状态筛选 -->
+  <view class="tabs" wx:if="{{isAdmin}}">
+    <view
+      class="tab {{activeStatus === item.key ? 'active' : ''}}"
+      wx:for="{{statusTabs}}"
+      wx:key="key"
+      data-status="{{item.key}}"
+      bindtap="onStatusTabTap">
+      <text>{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- 类型筛选 -->
+  <view class="type-tabs" wx:if="{{isAdmin}}">
+    <view
+      class="type-tab {{activeType === item.key ? 'active' : ''}}"
+      wx:for="{{typeTabs}}"
+      wx:key="key"
+      data-type="{{item.key}}"
+      bindtap="onTypeTabTap">
+      <text>{{item.label}}</text>
+    </view>
+    <view class="batch-toggle" bindtap="onToggleBatch">
+      <text>{{batchMode ? '取消' : '批量'}}</text>
+    </view>
+  </view>
+
+  <view class="empty" wx:if="{{checkedAdmin && !isAdmin}}">
+    <text>当前账号不是管理员</text>
+  </view>
+
+  <view class="empty" wx:if="{{isAdmin && !reports.length && !loading}}">
+    <text>当前筛选下暂无举报</text>
+  </view>
+
+  <view wx:if="{{isAdmin && reports.length}}">
+    <view class="card {{item.checked ? 'card-checked' : ''}}"
+      wx:for="{{reports}}" wx:key="id"
+      bindtap="onReportTap" data-id="{{item.id}}">
+      <view class="card-left" wx:if="{{batchMode}}">
+        <view class="checkbox {{item.checked ? 'checked' : ''}}"></view>
+      </view>
+      <view class="card-main">
+        <view class="card-top">
+          <text class="title">#{{item.id}} · {{item.targetLabel}}</text>
+          <text class="arrow" wx:if="{{!batchMode}}">›</text>
+        </view>
+        <view class="card-body">
+          <image class="card-thumb" wx:if="{{item.targetImageUrl}}"
+            src="{{item.targetImageUrl}}" mode="aspectFill" />
+          <view class="card-info">
+            <view class="meta" wx:if="{{item.targetPreview}}">
+              <text class="preview-text">{{item.targetPreview}}</text>
+            </view>
+            <view class="meta">
+              <text>举报原因：{{item.reason}}</text>
+            </view>
+            <view class="meta">
+              <text>举报人：{{item.reporterNickname || '用户'}} · {{item.createTimeLabel}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+  <view class="loading" wx:if="{{!hasMore && reports.length}}">
+    <text>没有更多了</text>
+  </view>
+
+  <!-- 批量操作栏 -->
+  <view class="batch-bar" wx:if="{{batchMode}}">
+    <text class="batch-count">已选 {{selectedIds.length}} 项</text>
+    <view class="batch-btn reject" bindtap="onBatchReject">批量驳回</view>
+    <view class="batch-btn resolve" bindtap="onBatchResolve">批量采纳</view>
+  </view>
+</view>

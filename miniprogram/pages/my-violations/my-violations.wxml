@@ -1,0 +1,48 @@
+<view class="page">
+  <view class="empty" wx:if="{{!violations.length && !loading}}">
+    <text>暂无违规记录，继续保持</text>
+  </view>
+
+  <view class="list" wx:if="{{violations.length}}">
+    <view class="card" wx:for="{{violations}}" wx:key="id">
+      <view class="card-top">
+        <text class="type-badge type-{{item.violationType}}">{{item.violationLabel}}</text>
+        <text class="time">{{item.createTimeLabel}}</text>
+      </view>
+      <view class="row">
+        <text class="label">原因</text>
+        <text class="value">{{item.reason}}</text>
+      </view>
+      <view class="row" wx:if="{{item.targetLabel}}">
+        <text class="label">涉及</text>
+        <text class="value">{{item.targetLabel}}</text>
+      </view>
+      <view class="row" wx:if="{{item.punishmentLabel}}">
+        <text class="label">处罚</text>
+        <text class="value punishment">{{item.punishmentLabel}}</text>
+      </view>
+      <view class="appeal-btn" wx:if="{{item.canAppeal}}" bindtap="onAppeal" data-item="{{item}}">
+        <text>申诉</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}"><text>加载中...</text></view>
+  <view class="loading" wx:if="{{!hasMore && violations.length}}"><text>没有更多了</text></view>
+
+  <!-- 申诉弹窗 -->
+  <view class="mask" wx:if="{{showAppealDialog}}" bindtap="onAppealCancel">
+    <view class="dialog" catchtap="">
+      <view class="dialog-title">申诉原因</view>
+      <textarea class="dialog-textarea"
+        placeholder="请说明你认为处理不当的原因..."
+        value="{{appealReason}}"
+        bindinput="onAppealInput"
+        maxlength="1000" />
+      <view class="dialog-btns">
+        <view class="dialog-btn cancel" bindtap="onAppealCancel">取消</view>
+        <view class="dialog-btn confirm" bindtap="onAppealSubmit">提交申诉</view>
+      </view>
+    </view>
+  </view>
+</view>

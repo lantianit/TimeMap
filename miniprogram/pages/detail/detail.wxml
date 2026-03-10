@@ -12,7 +12,7 @@
 
   <!-- 点赞栏 -->
   <view class="like-bar">
-    <view class="action-btn report-btn" bindtap="onReportPhoto">
+    <view class="action-btn report-btn" wx:if="{{!photo.isOwner}}" bindtap="onReportPhoto">
       <text class="action-text">举报</text>
     </view>
     <view class="action-btn delete-btn" wx:if="{{photo.isOwner}}" bindtap="onDeletePhoto">
@@ -106,7 +106,7 @@
         <block wx:if="{{item.showReplies && item.replies.length}}">
           <view class="reply-item" wx:for="{{item.replies}}" wx:for-item="reply" wx:for-index="ri" wx:key="id"
             bindlongpress="onCommentLongPress"
-            data-id="{{reply.id}}" data-user-id="{{reply.userId}}" data-idx="{{index}}">
+            data-id="{{reply.id}}" data-user-id="{{reply.userId}}" data-idx="{{index}}" data-reply-idx="{{ri}}">
             <image class="reply-avatar" src="{{reply.avatarUrl || '/images/icon-user.svg'}}"
               bindtap="onAvatarTap"
               data-user-id="{{reply.userId}}"
@@ -144,6 +144,22 @@
 
   <!-- 底部占位（给固定输入栏留空间） -->
   <view style="height: 120rpx;"></view>
+</view>
+
+<!-- 举报补充描述弹窗 -->
+<view class="report-mask" wx:if="{{showReportDesc}}" bindtap="onReportDescCancel">
+  <view class="report-dialog" catchtap="">
+    <view class="report-dialog-title">补充说明（选填）</view>
+    <textarea class="report-dialog-textarea"
+      placeholder="请描述更多细节，帮助我们更快处理..."
+      value="{{reportDescValue}}"
+      bindinput="onReportDescInput"
+      maxlength="500" />
+    <view class="report-dialog-btns">
+      <view class="report-dialog-btn cancel" bindtap="onReportDescCancel">跳过</view>
+      <view class="report-dialog-btn confirm" bindtap="onReportDescSubmit">提交举报</view>
+    </view>
+  </view>
 </view>
 
 <!-- 固定底部输入栏 -->

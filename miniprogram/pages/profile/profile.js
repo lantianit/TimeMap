@@ -12,18 +12,22 @@ Page({
   data: {
     isLoggedIn: false,
     userInfo: {},
+    isAdmin: false,
     topAreas: [],
     photos: [],
     photoTotal: 0,
     photoPage: 1,
     photoHasMore: true,
     photoLoading: false,
-    unreadCount: 0
+    unreadCount: 0,
+    pendingReportCount: 0,
+    pendingAppealCount: 0
   },
 
   onShow() {
     this.checkLoginStatus();
     if (app.isLoggedIn()) {
+      this.loadUserMeta();
       this.loadMyPhotos(true);
       this.loadUnreadCount();
     }
@@ -34,8 +38,36 @@ Page({
     this.setData({
       isLoggedIn,
       userInfo: app.globalData.userInfo || {},
+      isAdmin: isLoggedIn ? this.data.isAdmin : false,
       topAreas: isLoggedIn ? this.data.topAreas : []
     });
+  },
+
+  loadUserMeta() {
+    request('/user/info', 'GET')
+      .then(res => {
+        const info = res.data || {};
+        this.setData({
+          userInfo: Object.assign({}, this.data.userInfo, info),
+          isAdmin: !!info.isAdmin
+        });
+        if (info.isAdmin) {
+          this.loadPendingCount();
+        }
+      })
+      .catch(() => {});
+  },
+
+  loadPendingCount() {
+    request('/admin/report/pending-count', 'GET')
+      .then(res => {
+        const data = res.data || {};
+        this.setData({
+          pendingReportCount: data.reportCount || 0,
+          pendingAppealCount: data.appealCount || 0
+        });
+      })
+      .catch(() => {});
   },
 
   loadMyPhotos(refresh) {
@@ -63,9 +95,7 @@ Page({
   },
 
   loadUnreadCount() {
-    // 私信未读
     const p1 = request('/message/unread', 'GET').then(r => (r.data && r.data.count) || 0).catch(() => 0);
-    // 互动未读
     const p2 = request('/notification/unread', 'GET').then(r => (r.data && r.data.count) || 0).catch(() => 0);
     Promise.all([p1, p2]).then(([msg, notif]) => {
       this.setData({ unreadCount: msg + notif });
@@ -109,6 +139,18 @@ Page({
     wx.navigateTo({ url: '/pages/messages/messages' });
   },
 
+  onGoMyReports() {
+    wx.navigateTo({ url: '/pages/my-reports/my-reports' });
+  },
+
+  onGoMyViolations() {
+    wx.navigateTo({ url: '/pages/my-violations/my-violations' });
+  },
+
+  onGoAdminReports() {
+    wx.navigateTo({ url: '/pages/admin-reports/admin-reports' });
+  },
+
   onLogout() {
     wx.showModal({
       title: '提示',
@@ -116,7 +158,8 @@ Page({
       success: (res) => {
         if (res.confirm) {
           app.logout();
-          this.setData({ photos: [], photoTotal: 0, unreadCount: 0, topAreas: [] });
+          this.setData({ photos: [], photoTotal: 0, unreadCount: 0, topAreas: [], isAdmin: false,
+            pendingReportCount: 0, pendingAppealCount: 0 });
           this.checkLoginStatus();
           wx.showToast({ title: '已退出', icon: 'success' });
         }

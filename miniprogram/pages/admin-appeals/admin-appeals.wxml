@@ -1,0 +1,42 @@
+<view class="page">
+  <view class="tabs">
+    <view class="tab {{activeStatus === item.key ? 'active' : ''}}"
+      wx:for="{{tabs}}" wx:key="key"
+      data-status="{{item.key}}" bindtap="onTabTap">
+      <text>{{item.label}}</text>
+    </view>
+  </view>
+
+  <view class="empty" wx:if="{{!appeals.length && !loading}}">
+    <text>暂无申诉</text>
+  </view>
+
+  <view wx:if="{{appeals.length}}">
+    <view class="card" wx:for="{{appeals}}" wx:key="id"
+      bindtap="onAppealTap" data-item="{{item}}">
+      <view class="card-top">
+        <text class="type-tag">{{item.typeLabel}}</text>
+        <text class="status status-{{item.status}}">{{item.statusLabel}}</text>
+      </view>
+      <view class="meta">
+        <text>申诉人：{{item.userNickname || '用户'}}</text>
+      </view>
+      <view class="meta">
+        <text>原举报原因：{{item.reportReason || '-'}}</text>
+      </view>
+      <view class="reason">
+        <text>申诉理由：{{item.reason}}</text>
+      </view>
+      <view class="meta">
+        <text>{{item.createTimeLabel}}</text>
+      </view>
+      <view class="result" wx:if="{{item.handleResult}}">
+        <text class="result-label">处理结果</text>
+        <text class="result-text">{{item.handleResult}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}"><text>加载中...</text></view>
+  <view class="loading" wx:if="{{!hasMore && appeals.length}}"><text>没有更多了</text></view>
+</view>

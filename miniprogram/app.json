@@ -6,7 +6,14 @@
     "pages/community/community",
     "pages/chat/chat",
     "pages/messages/messages",
-    "pages/user/user"
+    "pages/user/user",
+    "pages/my-reports/my-reports",
+    "pages/my-violations/my-violations",
+    "pages/admin-reports/admin-reports",
+    "pages/admin-report-detail/admin-report-detail",
+    "pages/admin-appeals/admin-appeals",
+    "pages/admin-aggregated-reports/admin-aggregated-reports",
+    "pages/admin-logs/admin-logs"
   ],
   "window": {
     "navigationBarTitleText": "时迹地图",

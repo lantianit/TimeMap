@@ -5,6 +5,7 @@ import com.timemap.mapper.UserMapper;
 import com.timemap.model.dto.UpdateProfileRequest;
 import com.timemap.model.dto.UserInfoResponse;
 import com.timemap.model.entity.User;
+import com.timemap.service.AdminAuthService;
 import com.timemap.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
+
+    private final AdminAuthService adminAuthService;
 
     @Override
     public UserInfoResponse updateProfile(Long userId, UpdateProfileRequest request) {
@@ -30,7 +33,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         this.updateById(user);
 
-        return UserInfoResponse.from(user);
+        return buildResponse(user);
     }
 
     @Override
@@ -39,6 +42,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user == null) {
             throw new RuntimeException("用户不存在");
         }
-        return UserInfoResponse.from(user);
+        return buildResponse(user);
+    }
+
+    private UserInfoResponse buildResponse(User user) {
+        UserInfoResponse response = UserInfoResponse.from(user);
+        response.setIsAdmin(adminAuthService.isAdmin(user.getId()));
+        return response;
     }
 }

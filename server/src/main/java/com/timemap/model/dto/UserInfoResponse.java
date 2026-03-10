@@ -14,7 +14,12 @@ public class UserInfoResponse {
     private String province;
     private String city;
     private Boolean profileCompleted;
+    private Boolean isAdmin;
     private LocalDateTime createTime;
+    private LocalDateTime muteUntil;
+    private LocalDateTime banUploadUntil;
+    private Boolean isBanned;
+    private Integer violationCount;
 
     public static UserInfoResponse from(com.timemap.model.entity.User user) {
         UserInfoResponse resp = new UserInfoResponse();
@@ -27,6 +32,10 @@ public class UserInfoResponse {
         resp.setCity(user.getCity());
         resp.setProfileCompleted(user.getProfileCompleted() == 1);
         resp.setCreateTime(user.getCreateTime());
+        resp.setMuteUntil(user.getMuteUntil());
+        resp.setBanUploadUntil(user.getBanUploadUntil());
+        resp.setIsBanned(user.getIsBanned() != null && user.getIsBanned() == 1);
+        resp.setViolationCount(user.getViolationCount() != null ? user.getViolationCount() : 0);
         return resp;
     }
 }

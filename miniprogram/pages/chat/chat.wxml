@@ -12,7 +12,8 @@
         <text class="chat-time-text">{{item.label}}</text>
       </view>
 
-      <view wx:elif="{{item.type === 'message'}}" class="msg-row {{item.isMine ? 'mine' : 'other'}}" id="msg-{{item.messageId}}">
+      <view wx:elif="{{item.type === 'message'}}" class="msg-row {{item.isMine ? 'mine' : 'other'}}" id="msg-{{item.messageId}}"
+        bindlongpress="onMessageLongPress" data-id="{{item.messageId}}" data-is-mine="{{item.isMine}}">
         <image wx:if="{{!item.isMine && otherAvatarUrl}}" class="msg-avatar"
           src="{{otherAvatarUrl}}" mode="aspectFill" />
         <view wx:if="{{!item.isMine && !otherAvatarUrl}}" class="msg-avatar msg-avatar-fallback">

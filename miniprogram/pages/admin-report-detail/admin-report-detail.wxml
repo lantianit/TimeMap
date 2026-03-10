@@ -1,0 +1,84 @@
+<view class="page">
+  <view class="loading" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <view wx:if="{{!loading && detail}}">
+    <view class="card">
+      <view class="head">
+        <text class="title">举报 #{{detail.id}}</text>
+        <text class="status status-{{detail.status}}">{{detail.statusLabel}}</text>
+      </view>
+      <view class="line"><text class="label">对象</text><text class="value">{{detail.targetLabel}}</text></view>
+      <view class="line"><text class="label">原因</text><text class="value">{{detail.reason}}</text></view>
+      <view class="line"><text class="label">举报人</text><text class="value">{{detail.reporterNickname || '用户'}}</text></view>
+      <view class="line"><text class="label">创建时间</text><text class="value">{{detail.createTimeLabel}}</text></view>
+      <view class="line" wx:if="{{detail.description}}">
+        <text class="label">补充说明</text>
+        <text class="value">{{detail.description}}</text>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">被举报内容</view>
+      <image class="photo" wx:if="{{detail.targetImageUrl}}" src="{{detail.targetImageUrl}}" mode="aspectFill" bindtap="onPreviewImage" />
+      <text class="preview">{{detail.targetPreview || '暂无内容预览'}}</text>
+      <view class="owner" wx:if="{{detail.targetOwnerNickname}}">
+        <text>发布者：{{detail.targetOwnerNickname}}</text>
+      </view>
+      <button class="ghost-btn" wx:if="{{detail.photoId}}" bindtap="onGoPhoto">查看关联照片</button>
+    </view>
+
+    <!-- 内容作者违规记录 -->
+    <view class="card" wx:if="{{detail.targetOwnerUserId}}">
+      <view class="section-title">作者违规记录 ({{violations.length}})</view>
+      <view class="no-data" wx:if="{{!violations.length && !violationsLoading}}">
+        <text>暂无违规记录</text>
+      </view>
+      <view class="violation-item" wx:for="{{violations}}" wx:key="id">
+        <text class="violation-type">{{item.violationType}}</text>
+        <text class="violation-reason">{{item.reason}}</text>
+        <text class="violation-time">{{item.createTime}}</text>
+      </view>
+      <view class="punish-action" wx:if="{{detail.status === 0}}" bindtap="onPunishUser">
+        <text>对作者处罚</text>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">处理意见</view>
+      <textarea
+        class="textarea"
+        value="{{handleResult}}"
+        bindinput="onResultInput"
+        maxlength="500"
+        placeholder="填写处理结果或驳回原因" />
+
+      <!-- 采纳时可选择处罚 -->
+      <view class="punishment-section" wx:if="{{detail.status === 0}}">
+        <view class="punishment-row">
+          <text class="punishment-label">附加处罚</text>
+          <picker mode="selector" range="{{punishmentOptions}}" range-key="label"
+            value="{{punishmentIndex}}" bindchange="onPunishmentChange">
+            <text class="punishment-picker">{{punishmentOptions[punishmentIndex].label}} ▾</text>
+          </picker>
+        </view>
+        <view class="punishment-row" wx:if="{{punishmentIndex > 1}}">
+          <text class="punishment-label">天数</text>
+          <input class="punishment-input" type="number" value="{{punishmentDays}}"
+            bindinput="onPunishmentDaysInput" placeholder="7" />
+        </view>
+      </view>
+
+      <view class="handled" wx:if="{{detail.handledTimeLabel}}">
+        <text>处理时间：{{detail.handledTimeLabel}}</text>
+        <text wx:if="{{detail.handledByNickname}}">处理人：{{detail.handledByNickname}}</text>
+      </view>
+    </view>
+
+    <view class="action-bar" wx:if="{{detail.status === 0}}">
+      <button class="reject-btn" loading="{{submitting}}" bindtap="onReject">驳回举报</button>
+      <button class="resolve-btn" loading="{{submitting}}" bindtap="onResolve">采纳并处理</button>
+    </view>
+  </view>
+</view>

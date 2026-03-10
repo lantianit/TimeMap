@@ -1,0 +1,40 @@
+<view class="page">
+  <view class="empty" wx:if="{{!list.length && !loading}}">
+    <text>暂无待处理的聚合举报</text>
+  </view>
+
+  <view wx:if="{{list.length}}">
+    <view class="card" wx:for="{{list}}" wx:key="targetId"
+      bindtap="onItemTap" data-item="{{item}}">
+      <view class="card-top">
+        <text class="title">{{item.targetLabel}} · {{item.reportCount}}人举报</text>
+      </view>
+      <view class="card-body">
+        <image class="thumb" wx:if="{{item.targetImageUrl}}"
+          src="{{item.targetImageUrl}}" mode="aspectFill" />
+        <view class="info">
+          <view class="preview" wx:if="{{item.targetPreview}}">
+            <text>{{item.targetPreview}}</text>
+          </view>
+          <view class="meta">
+            <text>发布者：{{item.targetOwnerNickname || '未知'}}</text>
+          </view>
+          <view class="meta">
+            <text>举报原因：{{item.reasonText}}</text>
+          </view>
+          <view class="meta">
+            <text>时间：{{item.earliestTime}} ~ {{item.latestTime}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="action-row" catchtap="">
+        <view class="action-btn" catchtap="onBatchResolve" data-item="{{item}}">
+          一键处理全部
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}"><text>加载中...</text></view>
+  <view class="loading" wx:if="{{!hasMore && list.length}}"><text>没有更多了</text></view>
+</view>

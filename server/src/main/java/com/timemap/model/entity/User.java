@@ -27,6 +27,11 @@ public class User {
 
     private Integer profileCompleted;
 
+    private LocalDateTime muteUntil;
+    private LocalDateTime banUploadUntil;
+    private Integer isBanned;
+    private Integer violationCount;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

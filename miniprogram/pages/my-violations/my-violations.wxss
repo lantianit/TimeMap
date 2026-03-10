@@ -1,0 +1,57 @@
+.page { min-height: 100vh; background: #f5f5f5; padding: 24rpx; box-sizing: border-box; }
+.empty, .loading { padding: 120rpx 0; text-align: center; color: #999; font-size: 28rpx; }
+
+.card {
+  background: #fff; border-radius: 20rpx;
+  padding: 28rpx; margin-bottom: 20rpx;
+}
+
+.card-top {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 16rpx;
+}
+
+.type-badge {
+  font-size: 22rpx; padding: 6rpx 16rpx;
+  border-radius: 999rpx; font-weight: 500;
+}
+
+.type-content_removed { color: #fa8c16; background: rgba(250,140,22,0.12); }
+.type-warning { color: #faad14; background: rgba(250,173,20,0.12); }
+.type-mute { color: #e64340; background: rgba(230,67,64,0.12); }
+.type-ban_upload { color: #e64340; background: rgba(230,67,64,0.12); }
+.type-ban_account { color: #fff; background: #e64340; }
+
+.time { font-size: 22rpx; color: #bbb; }
+
+.row { display: flex; margin-top: 8rpx; }
+.label { width: 80rpx; color: #999; font-size: 24rpx; flex-shrink: 0; }
+.value { flex: 1; color: #333; font-size: 24rpx; line-height: 1.6; }
+.punishment { color: #e64340; }
+
+.appeal-btn {
+  margin-top: 16rpx; text-align: center;
+  height: 64rpx; line-height: 64rpx;
+  background: #f6fbf8; color: #07c160;
+  border-radius: 32rpx; font-size: 26rpx;
+}
+
+/* 弹窗 */
+.mask {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+}
+.dialog { width: 600rpx; background: #fff; border-radius: 24rpx; padding: 40rpx; }
+.dialog-title { font-size: 32rpx; font-weight: 600; color: #333; margin-bottom: 24rpx; }
+.dialog-textarea {
+  width: 100%; min-height: 200rpx; padding: 20rpx; box-sizing: border-box;
+  background: #f5f5f5; border-radius: 16rpx; font-size: 28rpx; color: #333;
+}
+.dialog-btns { display: flex; gap: 20rpx; margin-top: 30rpx; }
+.dialog-btn {
+  flex: 1; text-align: center; height: 80rpx; line-height: 80rpx;
+  border-radius: 40rpx; font-size: 28rpx;
+}
+.dialog-btn.cancel { background: #f5f5f5; color: #666; }
+.dialog-btn.confirm { background: #07c160; color: #fff; }

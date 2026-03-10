@@ -1,27 +1,31 @@
 const { request, checkLogin } = require('../../utils/request');
 const app = getApp();
 
+const REPORT_REASONS = ['色情低俗', '违法违规', '侵权', '虚假信息', '人身攻击', '其他'];
+
 Page({
   data: {
     photos: [],
     current: 0,
     total: 0,
     photo: {},
-    // 评论
     comments: [],
     commentTotal: 0,
     commentPage: 1,
     commentHasMore: true,
     commentLoading: false,
-    // 输入
     inputValue: '',
     inputFocus: false,
     replyMode: false,
     replyPlaceholder: '说点什么...',
     replyParentId: 0,
     replyToUserId: 0,
-    // 键盘高度
-    keyboardHeight: 0
+    keyboardHeight: 0,
+    showReportDesc: false,
+    reportDescValue: '',
+    _pendingReportType: '',
+    _pendingReportId: '',
+    _pendingReportReason: ''
   },
 
   onLoad(options) {
@@ -35,53 +39,37 @@ Page({
   },
 
   loadBatch(ids) {
-    console.log('[detail] loadBatch 开始, ids:', ids);
     request('/photo/batch', 'GET', { ids })
       .then((res) => {
-        console.log('[detail] loadBatch 响应:', res);
         const photos = (res.data || []).map(p => this._formatPhoto(p));
-        console.log('[detail] 格式化后的 photos:', photos);
         if (!photos.length) { wx.showToast({ title: '照片不存在', icon: 'none' }); return; }
         this._photoId = photos[0].id;
         this.setData({ photos, total: photos.length, current: 0, photo: photos[0] });
-        console.log('[detail] setData 完成, photo.liked:', this.data.photo.liked, 'photo.likeCount:', this.data.photo.likeCount);
         this.loadComments(true);
       })
-      .catch((err) => {
-        console.error('[detail] loadBatch 失败:', err);
+      .catch(() => {
         wx.showToast({ title: '加载失败', icon: 'none' });
       });
   },
 
   loadDetail(id) {
-    console.log('[detail] loadDetail 开始, id:', id);
     request('/photo/detail/' + id, 'GET')
       .then((res) => {
-        console.log('[detail] loadDetail 响应:', res);
         const photo = this._formatPhoto(res.data || {});
-        console.log('[detail] 格式化后的 photo:', photo);
         this.setData({ photos: [photo], total: 1, current: 0, photo });
-        console.log('[detail] setData 完成, photo.liked:', this.data.photo.liked, 'photo.likeCount:', this.data.photo.likeCount);
         this.loadComments(true);
       })
-      .catch((err) => {
-        console.error('[detail] loadDetail 失败:', err);
+      .catch(() => {
         wx.showToast({ title: '加载失败', icon: 'none' });
       });
   },
 
   _formatPhoto(photo) {
-    console.log('[detail] _formatPhoto 输入:', photo);
     if (photo.createTime) {
       photo.createTimeFormatted = photo.createTime.replace('T', ' ').substring(0, 10);
     }
-    if (photo.likeCount === undefined || photo.likeCount === null) {
-      photo.likeCount = 0;
-    }
-    if (photo.liked === undefined || photo.liked === null) {
-      photo.liked = false;
-    }
-    // 判断是否是自己的照片
+    if (photo.likeCount === undefined || photo.likeCount === null) photo.likeCount = 0;
+    if (photo.liked === undefined || photo.liked === null) photo.liked = false;
     const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
     photo.isOwner = myId && String(photo.userId) === String(myId);
     return photo;
@@ -174,7 +162,6 @@ Page({
       replyToUserId: this.data.replyToUserId || 0
     };
 
-    // 乐观更新
     const userInfo = app.globalData.userInfo || {};
     const optimistic = {
       id: 'temp_' + Date.now(),
@@ -211,14 +198,12 @@ Page({
     }
 
     request('/comment/add', 'POST', body).then(res => {
-      // 替换乐观数据或刷新回复
       if (body.parentId === 0) {
         const real = this._formatComment(res.data);
         const comments = this.data.comments.map(c => c.id === optimistic.id ? real : c);
         this.setData({ comments });
       } else {
         this._refreshReplies(body.parentId);
-        // 更新父评论 replyCount
         const comments = this.data.comments.map(c => {
           if (String(c.id) === String(body.parentId)) {
             c.replyCount = (c.replyCount || 0) + 1;
@@ -228,7 +213,6 @@ Page({
         this.setData({ comments });
       }
     }).catch(() => {
-      // 回滚乐观更新
       if (body.parentId === 0) {
         const comments = this.data.comments.filter(c => c.id !== optimistic.id);
         this.setData({ comments, commentTotal: this.data.commentTotal - 1 });
@@ -242,7 +226,6 @@ Page({
   onReplyTap(e) {
     if (!checkLogin()) return;
     const { id, nickname, parentId } = e.currentTarget.dataset;
-    // 如果是子评论的回复，parentId 指向顶级评论
     const actualParent = parentId && parentId !== '0' ? parentId : id;
     this.setData({
       replyMode: true,
@@ -289,7 +272,6 @@ Page({
     if (!checkLogin()) return;
     const { id, idx, replyIdx } = e.currentTarget.dataset;
 
-    // 乐观更新
     let path, comment;
     if (replyIdx !== undefined && replyIdx !== '') {
       path = 'comments[' + idx + '].replies[' + replyIdx + ']';
@@ -306,7 +288,6 @@ Page({
     });
 
     request('/comment/like?commentId=' + id, 'POST').catch(() => {
-      // 回滚
       this.setData({
         [path + '.liked']: comment.liked,
         [path + '.likeCount']: comment.likeCount
@@ -314,27 +295,85 @@ Page({
     });
   },
 
-  // ========== 删除 ==========
+  // ========== 删除/举报评论 ==========
 
   onCommentLongPress(e) {
-    const { id, userId, idx } = e.currentTarget.dataset;
+    if (!checkLogin()) return;
+    const { id, userId, idx, replyIdx } = e.currentTarget.dataset;
     const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
-    if (String(userId) !== String(myId)) return;
+    const isOwner = String(userId) === String(myId);
+    const itemList = isOwner ? ['删除'] : ['举报'];
 
     wx.showActionSheet({
-      itemList: ['删除'],
+      itemList,
       success: (res) => {
-        if (res.tapIndex === 0) {
+        if (res.tapIndex !== 0) return;
+        if (isOwner) {
           request('/comment/delete?commentId=' + id, 'POST').then(() => {
-            const comments = this.data.comments.filter(c => String(c.id) !== String(id));
-            this.setData({ comments, commentTotal: Math.max(0, this.data.commentTotal - 1) });
+            if (replyIdx !== undefined && replyIdx !== '') {
+              const replies = this.data.comments[idx].replies.filter(c => String(c.id) !== String(id));
+              const parentReplyCount = Math.max(0, (this.data.comments[idx].replyCount || 0) - 1);
+              this.setData({
+                ['comments[' + idx + '].replies']: replies,
+                ['comments[' + idx + '].replyCount']: parentReplyCount,
+                commentTotal: Math.max(0, this.data.commentTotal - 1)
+              });
+            } else {
+              const comments = this.data.comments.filter(c => String(c.id) !== String(id));
+              this.setData({ comments, commentTotal: Math.max(0, this.data.commentTotal - 1) });
+            }
           }).catch(() => wx.showToast({ title: '删除失败', icon: 'none' }));
+          return;
         }
+
+        this._showReportDialog('comment', id);
       }
     });
   },
 
-  // ========== 头像点击 → 私信 ==========
+  // ========== 1.3 + 1.4: 统一举报流程（选原因 → 补充描述 → 提交） ==========
+
+  _showReportDialog(targetType, targetId) {
+    wx.showActionSheet({
+      itemList: REPORT_REASONS,
+      success: (res) => {
+        const reason = REPORT_REASONS[res.tapIndex];
+        this.setData({
+          showReportDesc: true,
+          reportDescValue: '',
+          _pendingReportType: targetType,
+          _pendingReportId: targetId,
+          _pendingReportReason: reason
+        });
+      }
+    });
+  },
+
+  onReportDescInput(e) {
+    this.setData({ reportDescValue: e.detail.value || '' });
+  },
+
+  onReportDescCancel() {
+    this.setData({ showReportDesc: false });
+  },
+
+  onReportDescSubmit() {
+    const { _pendingReportType, _pendingReportId, _pendingReportReason, reportDescValue } = this.data;
+    this.setData({ showReportDesc: false });
+
+    let url = '/report/submit?targetType=' + _pendingReportType
+      + '&targetId=' + _pendingReportId
+      + '&reason=' + encodeURIComponent(_pendingReportReason);
+    if (reportDescValue && reportDescValue.trim()) {
+      url += '&description=' + encodeURIComponent(reportDescValue.trim());
+    }
+
+    request(url, 'POST')
+      .then(() => { wx.showToast({ title: '举报已提交', icon: 'success' }); })
+      .catch((err) => { wx.showToast({ title: (err && err.message) || '举报失败', icon: 'none' }); });
+  },
+
+  // ========== 头像点击 ==========
 
   onAvatarTap(e) {
     const userId = e.currentTarget.dataset.userId;
@@ -350,7 +389,7 @@ Page({
     });
   },
 
-  // ========== 原有方法 ==========
+  // ========== 轮播 ==========
 
   onSwiperChange(e) {
     const idx = e.detail.current;
@@ -376,9 +415,6 @@ Page({
     });
   },
 
-  // ========== 照片点赞 ==========
-
-  /** 删除照片（仅自己的） */
   onDeletePhoto() {
     if (!checkLogin()) return;
     wx.showModal({
@@ -392,27 +428,20 @@ Page({
             wx.showToast({ title: '已删除', icon: 'success' });
             setTimeout(() => { wx.navigateBack(); }, 800);
           })
-          .catch(() => { wx.showToast({ title: '删除失败', icon: 'none' }); });
+          .catch(() => wx.showToast({ title: '删除失败', icon: 'none' }));
       }
     });
   },
 
-  /** 举报照片 */
   onReportPhoto() {
     if (!checkLogin()) return;
-    wx.showActionSheet({
-      itemList: ['色情低俗', '违法违规', '侵权', '虚假信息', '其他'],
-      success: (res) => {
-        const reasons = ['色情低俗', '违法违规', '侵权', '虚假信息', '其他'];
-        const reason = reasons[res.tapIndex];
-        request('/report/submit?targetType=photo&targetId=' + this._photoId + '&reason=' + encodeURIComponent(reason), 'POST')
-          .then(() => { wx.showToast({ title: '举报已提交', icon: 'success' }); })
-          .catch(() => { wx.showToast({ title: '举报失败', icon: 'none' }); });
-      }
-    });
+    if (this.data.photo && this.data.photo.isOwner) {
+      wx.showToast({ title: '不能举报自己的照片', icon: 'none' });
+      return;
+    }
+    this._showReportDialog('photo', this._photoId);
   },
 
-  /** 上传者信息点击 → 用户主页 */
   onUploaderTap() {
     const photo = this.data.photo;
     if (!photo || !photo.userId) return;
@@ -434,7 +463,6 @@ Page({
     const newLiked = !photo.liked;
     const newLikeCount = photo.likeCount + (newLiked ? 1 : -1);
 
-    // 乐观更新：同时更新 photo 和 photos 数组
     this.setData({
       'photo.liked': newLiked,
       'photo.likeCount': newLikeCount,
@@ -444,7 +472,6 @@ Page({
 
     request('/photo/like?photoId=' + this._photoId, 'POST').then(res => {
       const data = res.data || {};
-      // 更新为服务器返回的真实值
       this.setData({
         'photo.liked': data.liked,
         'photo.likeCount': data.likeCount,
@@ -452,7 +479,6 @@ Page({
         [`photos[${currentIdx}].likeCount`]: data.likeCount
       });
     }).catch(() => {
-      // 回滚
       this.setData({
         'photo.liked': photo.liked,
         'photo.likeCount': photo.likeCount,

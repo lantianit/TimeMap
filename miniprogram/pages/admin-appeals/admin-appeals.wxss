@@ -1,0 +1,54 @@
+.page { min-height: 100vh; background: #f5f5f5; }
+
+.tabs {
+  display: flex; background: #fff; position: sticky; top: 0; z-index: 10;
+  border-bottom: 1rpx solid #eee;
+}
+.tab {
+  flex: 1; text-align: center; padding: 24rpx 0;
+  color: #666; font-size: 28rpx; position: relative;
+}
+.tab.active { color: #07c160; font-weight: 600; }
+.tab.active::after {
+  content: ''; position: absolute; left: 50%; bottom: 0;
+  transform: translateX(-50%); width: 60rpx; height: 4rpx;
+  border-radius: 999rpx; background: #07c160;
+}
+
+.empty, .loading {
+  text-align: center; color: #999; font-size: 28rpx; padding: 120rpx 24rpx;
+}
+
+.card {
+  margin: 20rpx 24rpx 0; padding: 26rpx;
+  border-radius: 20rpx; background: #fff;
+}
+
+.card-top {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 12rpx;
+}
+
+.type-tag {
+  font-size: 26rpx; font-weight: 600; color: #333;
+}
+
+.status { font-size: 22rpx; padding: 8rpx 16rpx; border-radius: 999rpx; }
+.status-0 { color: #fa8c16; background: rgba(250,140,22,0.12); }
+.status-1 { color: #07c160; background: rgba(7,193,96,0.12); }
+.status-2 { color: #666; background: #f0f0f0; }
+
+.meta { margin-top: 6rpx; font-size: 24rpx; color: #666; line-height: 1.6; }
+
+.reason {
+  margin-top: 10rpx; padding: 16rpx;
+  background: #f8f9fb; border-radius: 12rpx;
+  font-size: 24rpx; color: #333; line-height: 1.7;
+}
+
+.result {
+  margin-top: 12rpx; padding: 16rpx;
+  background: #f0faf4; border-radius: 12rpx;
+}
+.result-label { font-size: 22rpx; color: #999; display: block; margin-bottom: 4rpx; }
+.result-text { font-size: 24rpx; color: #333; }
