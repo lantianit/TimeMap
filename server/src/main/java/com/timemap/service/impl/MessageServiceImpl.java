@@ -9,6 +9,7 @@ import com.timemap.model.dto.MessageResponse;
 import com.timemap.model.dto.SendMessageRequest;
 import com.timemap.model.entity.Message;
 import com.timemap.model.entity.User;
+import com.timemap.monitor.BusinessMetricsCollector;
 import com.timemap.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class MessageServiceImpl implements MessageService {
 
     private final MessageMapper messageMapper;
     private final UserMapper userMapper;
+    private final BusinessMetricsCollector metricsCollector;
 
     @Override
     public List<ConversationResponse> getConversations(Long userId) {
@@ -51,6 +53,10 @@ public class MessageServiceImpl implements MessageService {
         msg.setMsgType(req.getMsgType() != null ? req.getMsgType() : "text");
         msg.setReadStatus(0);
         messageMapper.insert(msg);
+
+        // 监控埋点
+        metricsCollector.recordMessage(String.valueOf(userId));
+
         return toResponse(msg);
     }
 

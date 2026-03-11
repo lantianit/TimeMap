@@ -40,7 +40,7 @@ export default function Login() {
 
   return (
     <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
-      <Card title="时迹地图 · 管理后台" style={{ width: 400 }}>
+      <Card title="地图时迹 · 管理后台" style={{ width: 400 }}>
         <Form onFinish={onFinish} autoComplete="off">
           <Form.Item name="username" rules={[{ required: true, message: '请输入账号' }]}>
             <Input prefix={<UserOutlined />} placeholder="账号" size="large" />

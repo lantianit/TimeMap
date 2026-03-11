@@ -7,6 +7,7 @@ import com.timemap.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/user")
@@ -28,5 +29,15 @@ public class UserController {
     public Result<UserInfoResponse> getUserInfo(@RequestAttribute("userId") Long userId) {
         UserInfoResponse response = userService.getUserInfo(userId);
         return Result.ok(response);
+    }
+
+    @PostMapping("/avatar")
+    public Result<UserInfoResponse> uploadAvatar(
+            @RequestAttribute("userId") Long userId,
+            @RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return Result.fail("请选择头像");
+        }
+        return Result.ok(userService.uploadAvatar(userId, file));
     }
 }

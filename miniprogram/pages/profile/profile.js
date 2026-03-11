@@ -1,4 +1,4 @@
-const { request } = require('../../utils/request');
+const { request, uploadFile } = require('../../utils/request');
 const app = getApp();
 
 function normalizeTopAreas(areas) {
@@ -12,6 +12,13 @@ Page({
   data: {
     isLoggedIn: false,
     userInfo: {},
+    profileNickname: '',
+    avatarPreview: '',
+    phoneBound: false,
+    phoneMasked: '',
+    canSubmit: false,
+    savingProfile: false,
+    bindingPhone: false,
     isAdmin: false,
     topAreas: [],
     photos: [],
@@ -21,11 +28,18 @@ Page({
     photoLoading: false,
     unreadCount: 0,
     pendingReportCount: 0,
-    pendingAppealCount: 0
+    pendingAppealCount: 0,
+    // 弹窗
+    showSetupSheet: false,
+    setupStep: 1
   },
 
+  // 本次 onShow 是否已尝试过自动弹窗（防止重复弹）
+  _autoSheetTriggered: false,
+
   onShow() {
-    this.checkLoginStatus();
+    this._autoSheetTriggered = false;
+    this._syncLocalState();
     if (app.isLoggedIn()) {
       this.loadUserMeta();
       this.loadMyPhotos(true);
@@ -33,27 +47,80 @@ Page({
     }
   },
 
-  checkLoginStatus() {
+  // 仅同步本地缓存到 data，不触发弹窗
+  _syncLocalState() {
     const isLoggedIn = app.isLoggedIn();
+    const ui = app.globalData.userInfo || {};
     this.setData({
       isLoggedIn,
-      userInfo: app.globalData.userInfo || {},
+      userInfo: ui,
+      profileNickname: ui.nickname || '',
+      avatarPreview: ui.avatarUrl || '',
+      phoneBound: !!ui.phoneBound,
+      phoneMasked: ui.phoneMasked || '',
       isAdmin: isLoggedIn ? this.data.isAdmin : false,
       topAreas: isLoggedIn ? this.data.topAreas : []
     });
+    this.updateCanSubmit();
   },
+
+  // 判断资料是否真正不完整（只看头像和昵称，手机号是选填）
+  _isProfileIncomplete(info) {
+    const noAvatar = !info.avatarUrl;
+    const noNickname = !info.nickname || info.nickname === '微信用户';
+    return noAvatar || noNickname;
+  },
+
+  // 根据已有资料智能定位起始步骤
+  _calcStartStep(info) {
+    if (!info.avatarUrl) return 1;
+    if (!info.nickname || info.nickname === '微信用户') return 2;
+    return 3; // 都有了，从手机号开始（编辑资料场景）
+  },
+
+  // 自动弹窗（仅在 loadUserMeta 拿到真实数据后调用一次）
+  _tryAutoShowSheet(info) {
+    if (this._autoSheetTriggered) return;
+    this._autoSheetTriggered = true;
+
+    if (!this._isProfileIncomplete(info)) return;
+
+    const step = this._calcStartStep(info);
+    setTimeout(() => {
+      // 再次检查，防止用户在延迟期间已手动操作
+      if (!this.data.showSetupSheet) {
+        this.setData({ showSetupSheet: true, setupStep: step });
+      }
+    }, 500);
+  },
+
+  updateCanSubmit() {
+    const nickname = (this.data.profileNickname || '').trim();
+    const avatar = this.data.avatarPreview || '';
+    this.setData({ canSubmit: !!nickname && !!avatar });
+  },
+
+  // -------- 数据加载 --------
 
   loadUserMeta() {
     request('/user/info', 'GET')
       .then(res => {
         const info = res.data || {};
+        app.setUserInfo(info);
+        app.setAuthState(info);
         this.setData({
           userInfo: Object.assign({}, this.data.userInfo, info),
+          profileNickname: info.nickname || this.data.profileNickname,
+          avatarPreview: info.avatarUrl || this.data.avatarPreview,
+          phoneBound: !!info.phoneBound,
+          phoneMasked: info.phoneMasked || '',
           isAdmin: !!info.isAdmin
         });
-        if (info.isAdmin) {
-          this.loadPendingCount();
-        }
+        this.updateCanSubmit();
+        if (info.isAdmin) this.loadPendingCount();
+
+        // 唯一的自动弹窗入口
+        this._tryAutoShowSheet(info);
       })
       .catch(() => {});
   },
@@ -61,10 +128,10 @@ Page({
   loadPendingCount() {
     request('/admin/report/pending-count', 'GET')
       .then(res => {
-        const data = res.data || {};
+        const d = res.data || {};
         this.setData({
-          pendingReportCount: data.reportCount || 0,
-          pendingAppealCount: data.appealCount || 0
+          pendingReportCount: d.reportCount || 0,
+          pendingAppealCount: d.appealCount || 0
         });
       })
       .catch(() => {});
@@ -91,7 +158,7 @@ Page({
           photoLoading: false
         });
       })
-      .catch(() => { this.setData({ photoLoading: false }); });
+      .catch(() => this.setData({ photoLoading: false }));
   },
 
   loadUnreadCount() {
@@ -108,48 +175,151 @@ Page({
     }
   },
 
-  onPhotoTap(e) {
-    const id = e.currentTarget.dataset.id;
-    wx.navigateTo({ url: '/pages/detail/detail?id=' + id });
-  },
+  // -------- 登录 --------
 
   onLogin() {
-    wx.getUserProfile({
-      desc: '用于完善个人资料',
-      success: (profileRes) => {
-        const userProfile = profileRes.userInfo;
-        wx.showLoading({ title: '登录中...' });
-        app.login(userProfile)
-          .then(() => {
-            wx.hideLoading();
-            wx.showToast({ title: '登录成功', icon: 'success' });
-            this.checkLoginStatus();
-            this.loadMyPhotos(true);
-            this.loadUnreadCount();
-          })
-          .catch(() => {
-            wx.hideLoading();
-            wx.showToast({ title: '登录失败', icon: 'none' });
-          });
-      }
-    });
+    wx.showLoading({ title: '登录中...' });
+    app.login()
+      .then(() => app.syncUserInfo().catch(() => null))
+      .then(() => {
+        wx.hideLoading();
+        this._autoSheetTriggered = false; // 登录后重置，允许弹窗
+        this._syncLocalState();
+        this.loadUserMeta();
+        this.loadMyPhotos(true);
+        this.loadUnreadCount();
+      })
+      .catch(() => {
+        wx.hideLoading();
+        wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+      });
   },
 
-  onGoMessages() {
-    wx.navigateTo({ url: '/pages/messages/messages' });
+  // -------- 弹窗引导 --------
+
+  noop() {},
+
+  onSheetMaskTap() {
+    this.setData({ showSetupSheet: false });
   },
 
-  onGoMyReports() {
-    wx.navigateTo({ url: '/pages/my-reports/my-reports' });
+  onSetupNext() {
+    const step = this.data.setupStep;
+    if (step === 1 && !this.data.avatarPreview) {
+      wx.showToast({ title: '请先点击头像选择你的微信头像', icon: 'none' });
+      return;
+    }
+    if (step === 2 && !(this.data.profileNickname || '').trim()) {
+      wx.showToast({ title: '请先填写你的昵称', icon: 'none' });
+      return;
+    }
+    this.setData({ setupStep: step + 1 });
   },
 
-  onGoMyViolations() {
-    wx.navigateTo({ url: '/pages/my-violations/my-violations' });
+  onSetupBack() {
+    if (this.data.setupStep > 1) {
+      this.setData({ setupStep: this.data.setupStep - 1 });
+    }
   },
 
-  onGoAdminReports() {
-    wx.navigateTo({ url: '/pages/admin-reports/admin-reports' });
+  onStepTap(e) {
+    const target = parseInt(e.currentTarget.dataset.step);
+    if (target < this.data.setupStep) {
+      this.setData({ setupStep: target });
+    }
   },
+
+  onSetupComplete() {
+    const nickname = (this.data.profileNickname || '').trim();
+    const avatarPreview = this.data.avatarPreview || '';
+    if (!nickname || !avatarPreview) {
+      wx.showToast({ title: '请先设置头像和昵称', icon: 'none' });
+      return;
+    }
+
+    this.setData({ savingProfile: true });
+
+    const isLocal = !/^https?:\/\//.test(avatarPreview);
+    const avatarTask = isLocal
+      ? uploadFile('/user/avatar', avatarPreview).then(r => (r.data && r.data.avatarUrl) || avatarPreview)
+      : Promise.resolve(avatarPreview);
+
+    avatarTask
+      .then(avatarUrl => request('/user/profile', 'POST', { nickname, avatarUrl }))
+      .then(res => {
+        const info = res.data || {};
+        app.setUserInfo(info);
+        app.setAuthState(info);
+        this.setData({
+          userInfo: Object.assign({}, this.data.userInfo, info),
+          avatarPreview: info.avatarUrl || avatarPreview,
+          profileNickname: info.nickname || nickname,
+          showSetupSheet: false,
+          setupStep: 1
+        });
+        wx.showToast({ title: '设置成功', icon: 'success' });
+        this.loadMyPhotos(true);
+        this.loadUnreadCount();
+      })
+      .catch(err => {
+        wx.showToast({ title: (err && err.message) || '保存失败', icon: 'none' });
+      })
+      .finally(() => this.setData({ savingProfile: false }));
+  },
+
+  onChooseAvatar(e) {
+    const url = e.detail && e.detail.avatarUrl;
+    if (!url) return;
+    this.setData({ avatarPreview: url });
+    this.updateCanSubmit();
+  },
+
+  onNicknameInput(e) {
+    this.setData({ profileNickname: e.detail.value || '' });
+    this.updateCanSubmit();
+  },
+
+  onNicknameBlur(e) {
+    this.setData({ profileNickname: e.detail.value || '' });
+    this.updateCanSubmit();
+  },
+
+  onGetPhoneNumber(e) {
+    const code = e.detail && e.detail.code;
+    if (!code) {
+      wx.showToast({ title: '已取消授权', icon: 'none' });
+      return;
+    }
+    this.setData({ bindingPhone: true });
+    request('/auth/bind-phone', 'POST', { code })
+      .then(res => {
+        const masked = (res.data && res.data.phoneMasked) || '';
+        app.setUserInfo({ phoneBound: true, phoneMasked: masked, needPhone: false });
+        app.setAuthState({ needPhone: false, needProfile: app.globalData.needProfile });
+        this.setData({ phoneBound: true, phoneMasked: masked });
+        wx.showToast({ title: '手机号已绑定', icon: 'success' });
+      })
+      .catch(err => {
+        wx.showToast({ title: (err && err.message) || '绑定失败，请稍后重试', icon: 'none' });
+      })
+      .finally(() => this.setData({ bindingPhone: false }));
+  },
+
+  // -------- 正常页面 --------
+
+  onEditProfile() {
+    // 用户主动编辑，始终从第1步开始
+    this.setData({ showSetupSheet: true, setupStep: 1 });
+  },
+
+  onPhotoTap(e) {
+    wx.navigateTo({ url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id });
+  },
+
+  onGoMessages() { wx.navigateTo({ url: '/pages/messages/messages' }); },
+  onGoMyReports() { wx.navigateTo({ url: '/pages/my-reports/my-reports' }); },
+  onGoMyViolations() { wx.navigateTo({ url: '/pages/my-violations/my-violations' }); },
+  onGoAdminReports() { wx.navigateTo({ url: '/pages/admin-reports/admin-reports' }); },
 
   onLogout() {
     wx.showModal({
@@ -158,9 +328,14 @@ Page({
       success: (res) => {
         if (res.confirm) {
           app.logout();
-          this.setData({ photos: [], photoTotal: 0, unreadCount: 0, topAreas: [], isAdmin: false,
-            pendingReportCount: 0, pendingAppealCount: 0 });
-          this.checkLoginStatus();
+          this.setData({
+            photos: [], photoTotal: 0, unreadCount: 0, topAreas: [],
+            isAdmin: false, pendingReportCount: 0, pendingAppealCount: 0,
+            profileNickname: '', avatarPreview: '',
+            phoneBound: false, phoneMasked: '',
+            showSetupSheet: false, setupStep: 1
+          });
+          this._syncLocalState();
           wx.showToast({ title: '已退出', icon: 'success' });
         }
       }

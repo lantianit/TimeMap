@@ -3,76 +3,112 @@ App({
     baseUrl: 'http://localhost:8080/api',
     mapKey: 'HXKBZ-VM7L5-E4TII-ITIGH-2TYAV-BJFYS',
     token: '',
-    userInfo: null
+    userInfo: null,
+    needPhone: false,
+    needProfile: false
   },
 
   onLaunch() {
-    // 检查本地缓存的 token
     const token = wx.getStorageSync('token');
+    const authState = wx.getStorageSync('authState') || {};
     if (token) {
       this.globalData.token = token;
       this.globalData.userInfo = wx.getStorageSync('userInfo') || null;
-      console.log('[TimeMap] 使用缓存Token');
+      this.globalData.needPhone = !!authState.needPhone;
+      this.globalData.needProfile = !!authState.needProfile;
     }
   },
 
-  /** 是否已登录 */
   isLoggedIn() {
     return !!this.globalData.token;
   },
 
-  /** 登录（由页面主动调用） */
-  login(userProfile) {
+  needsProfileCompletion() {
+    return !!(this.globalData.needPhone || this.globalData.needProfile);
+  },
+
+  setAuthState(state) {
+    if (state.needPhone !== undefined) this.globalData.needPhone = !!state.needPhone;
+    if (state.needProfile !== undefined) this.globalData.needProfile = !!state.needProfile;
+    wx.setStorageSync('authState', {
+      needPhone: this.globalData.needPhone,
+      needProfile: this.globalData.needProfile
+    });
+  },
+
+  setUserInfo(info) {
+    this.globalData.userInfo = Object.assign({}, this.globalData.userInfo || {}, info || {});
+    wx.setStorageSync('userInfo', this.globalData.userInfo);
+  },
+
+  login() {
     return new Promise((resolve, reject) => {
       wx.login({
-        success: (res) => {
-          if (!res.code) {
+        success: (loginRes) => {
+          if (!loginRes.code) {
             reject(new Error('wx.login 失败'));
             return;
           }
           wx.request({
-            url: `${this.globalData.baseUrl}/auth/login`,
+            url: this.globalData.baseUrl + '/auth/login',
             method: 'POST',
-            data: {
-              code: res.code,
-              nickname: userProfile.nickName,
-              avatarUrl: userProfile.avatarUrl,
-              gender: userProfile.gender,
-              country: userProfile.country,
-              province: userProfile.province,
-              city: userProfile.city
-            },
+            data: { code: loginRes.code },
             header: { 'Content-Type': 'application/json' },
             success: (resp) => {
-              if (resp.data.code === 200) {
-                const { token, userId } = resp.data.data;
-                this.globalData.token = token;
-                this.globalData.userInfo = {
-                  userId,
-                  nickname: userProfile.nickName,
-                  avatarUrl: userProfile.avatarUrl
-                };
-                wx.setStorageSync('token', token);
-                wx.setStorageSync('userInfo', this.globalData.userInfo);
-                console.log('[TimeMap] 登录成功', resp.data.data);
-                resolve(resp.data.data);
+              if (resp.data && resp.data.code === 200) {
+                const d = resp.data.data;
+                this.globalData.token = d.token;
+                wx.setStorageSync('token', d.token);
+                this.setAuthState({ needPhone: d.needPhone, needProfile: d.needProfile });
+                this.setUserInfo({ userId: d.userId });
+                resolve(d);
               } else {
-                reject(new Error(resp.data.message));
+                reject(new Error((resp.data && resp.data.message) || '登录失败'));
               }
             },
-            fail: (err) => reject(err)
+            fail: reject
           });
         },
-        fail: (err) => reject(err)
+        fail: reject
       });
     });
   },
 
-  /** 退出登录 */
+  syncUserInfo() {
+    return new Promise((resolve, reject) => {
+      if (!this.globalData.token) {
+        reject(new Error('未登录'));
+        return;
+      }
+      wx.request({
+        url: this.globalData.baseUrl + '/user/info',
+        method: 'GET',
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + this.globalData.token
+        },
+        success: (resp) => {
+          if (resp.data && resp.data.code === 200) {
+            const info = resp.data.data || {};
+            this.setUserInfo(info);
+            this.setAuthState(info);
+            resolve(info);
+          } else {
+            reject(new Error((resp.data && resp.data.message) || '获取用户信息失败'));
+          }
+        },
+        fail: reject
+      });
+    });
+  },
+
   logout() {
     this.globalData.token = '';
     this.globalData.userInfo = null;
+    this.globalData.needPhone = false;
+    this.globalData.needProfile = false;
     wx.removeStorageSync('token');
     wx.removeStorageSync('userInfo');
+    wx.removeStorageSync('authState');
   }
 });

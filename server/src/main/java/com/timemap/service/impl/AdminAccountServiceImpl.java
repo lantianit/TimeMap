@@ -8,6 +8,7 @@ import com.timemap.mapper.AdminLoginLogMapper;
 import com.timemap.model.dto.*;
 import com.timemap.model.entity.AdminAccount;
 import com.timemap.model.entity.AdminLoginLog;
+import com.timemap.monitor.BusinessMetricsCollector;
 import com.timemap.service.AdminAccountService;
 import com.timemap.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class AdminAccountServiceImpl implements AdminAccountService {
     private final AdminLoginLogMapper adminLoginLogMapper;
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
+    private final BusinessMetricsCollector metricsCollector;
     private static final BCryptPasswordEncoder ENCODER = new BCryptPasswordEncoder();
     private static final String DEFAULT_PASSWORD = "Admin@2026";
     private static final int MAX_FAIL_COUNT = 5;
@@ -43,14 +45,17 @@ public class AdminAccountServiceImpl implements AdminAccountService {
                 new LambdaQueryWrapper<AdminAccount>().eq(AdminAccount::getUsername, request.getUsername()));
         if (account == null) {
             logLogin(0L, "login_fail", ip, userAgent, "账号不存在: " + request.getUsername());
+            metricsCollector.recordAdminLogin("fail");
             throw new RuntimeException("账号或密码错误");
         }
         if (account.getIsEnabled() == 0) {
             logLogin(account.getId(), "login_fail", ip, userAgent, "账号已禁用");
+            metricsCollector.recordAdminLogin("fail");
             throw new RuntimeException("账号已被禁用");
         }
         if (account.getLockUntil() != null && account.getLockUntil().isAfter(LocalDateTime.now())) {
             logLogin(account.getId(), "login_fail", ip, userAgent, "账号锁定中");
+            metricsCollector.recordAdminLogin("fail");
             throw new RuntimeException("账号已锁定，请" + LOCK_MINUTES + "分钟后再试");
         }
         if (!ENCODER.matches(request.getPassword(), account.getPasswordHash())) {
@@ -62,6 +67,7 @@ public class AdminAccountServiceImpl implements AdminAccountService {
             }
             adminAccountMapper.updateById(account);
             logLogin(account.getId(), "login_fail", ip, userAgent, "密码错误，第" + failCount + "次");
+            metricsCollector.recordAdminLogin("fail");
             throw new RuntimeException("账号或密码错误");
         }
         // Login success
@@ -71,6 +77,7 @@ public class AdminAccountServiceImpl implements AdminAccountService {
         account.setLastLoginIp(ip);
         adminAccountMapper.updateById(account);
         logLogin(account.getId(), "login_success", ip, userAgent, "");
+        metricsCollector.recordAdminLogin("success");
 
         boolean mustChange = account.getMustChangePassword() != null && account.getMustChangePassword() == 1;
         // Check password expiry

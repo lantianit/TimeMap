@@ -839,7 +839,7 @@ Page({
       if (idx >= total) {
         const msg = failed > 0
           ? `上传完成，${total - failed}张成功，${failed}张失败`
-          : total === 1 ? '上传成功，已加入时迹地图'
+          : total === 1 ? '上传成功，已加入地图时迹'
           : `${total}张照片全部上传成功`;
         this._showToast(msg);
         this.setData({ uploading: false, uploadProgress: 0 });

@@ -11,6 +11,7 @@ import com.timemap.model.dto.CommentResponse;
 import com.timemap.model.entity.Comment;
 import com.timemap.model.entity.CommentLike;
 import com.timemap.model.entity.User;
+import com.timemap.monitor.BusinessMetricsCollector;
 import com.timemap.service.CommentService;
 import com.timemap.service.NotificationService;
 import com.timemap.mapper.PhotoMapper;
@@ -30,6 +31,7 @@ public class CommentServiceImpl implements CommentService {
     private final UserMapper userMapper;
     private final NotificationService notificationService;
     private final PhotoMapper photoMapper;
+    private final BusinessMetricsCollector metricsCollector;
 
     @Override
     public CommentPageResponse getComments(Long photoId, int page, int size, Long currentUserId) {
@@ -87,6 +89,10 @@ public class CommentServiceImpl implements CommentService {
         comment.setLikeCount(0);
         comment.setReplyCount(0);
         commentMapper.insert(comment);
+
+        // 监控埋点
+        String commentType = comment.getParentId() != 0L ? "reply" : "top_level";
+        metricsCollector.recordComment(String.valueOf(userId), commentType);
 
         // 如果是回复，更新父评论的 replyCount
         if (comment.getParentId() != 0L) {
@@ -157,6 +163,7 @@ public class CommentServiceImpl implements CommentService {
         }
 
         commentMapper.deleteById(commentId);
+        metricsCollector.recordCommentDelete(checkOwner ? "user" : "admin");
     }
 
     @Override
@@ -173,6 +180,7 @@ public class CommentServiceImpl implements CommentService {
             commentLikeMapper.deleteById(existing.getId());
             comment.setLikeCount(Math.max(0, comment.getLikeCount() - 1));
             liked = false;
+            metricsCollector.recordLike(String.valueOf(userId), "comment", "unlike");
         } else {
             CommentLike cl = new CommentLike();
             cl.setCommentId(commentId);
@@ -180,6 +188,7 @@ public class CommentServiceImpl implements CommentService {
             commentLikeMapper.insert(cl);
             comment.setLikeCount(comment.getLikeCount() + 1);
             liked = true;
+            metricsCollector.recordLike(String.valueOf(userId), "comment", "like");
             // 通知评论作者
             notificationService.createNotification(
                     comment.getUserId(), userId, "comment_like",

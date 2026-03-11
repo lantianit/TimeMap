@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.timemap.mapper.*;
 import com.timemap.model.dto.*;
 import com.timemap.model.entity.*;
+import com.timemap.monitor.BusinessMetricsCollector;
 import com.timemap.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,7 @@ public class ReportServiceImpl implements ReportService {
     private final AdminAuthService adminAuthService;
     private final AdminLogService adminLogService;
     private final CosService cosService;
+    private final BusinessMetricsCollector metricsCollector;
 
     // ==================== 7.1 举报频率限制 ====================
 
@@ -97,6 +99,9 @@ public class ReportServiceImpl implements ReportService {
         report.setDescription(limit(description, 500));
         report.setStatus(0);
         reportMapper.insert(report);
+
+        // 监控埋点
+        metricsCollector.recordReport(reason.trim(), targetInfo.targetType);
 
         ReportSubmitResponse response = new ReportSubmitResponse();
         response.setReportId(report.getId());
@@ -209,6 +214,9 @@ public class ReportServiceImpl implements ReportService {
         adminLogService.log(adminUserId, "resolve_report", "report", report.getId(),
                 "采纳举报，类型=" + report.getTargetType() + "，目标=" + report.getTargetId()
                         + "，结果=" + report.getHandleResult());
+
+        // 监控埋点
+        metricsCollector.recordReportHandle("resolved");
     }
 
     @Override
@@ -233,6 +241,9 @@ public class ReportServiceImpl implements ReportService {
 
         adminLogService.log(adminUserId, "reject_report", "report", report.getId(),
                 "驳回举报，原因=" + report.getHandleResult());
+
+        // 监控埋点
+        metricsCollector.recordReportHandle("rejected");
     }
 
     // ==================== 3.10 批量处理 ====================
@@ -536,6 +547,9 @@ public class ReportServiceImpl implements ReportService {
 
         adminLogService.log(adminUserId, "punish_user", "user", userId,
                 "处罚类型=" + punishmentType + "，天数=" + days + "，原因=" + reason);
+
+        // 监控埋点
+        metricsCollector.recordPunishment(punishmentType);
     }
 
     private UserViolationPageResponse queryViolations(Long userId, int page, int size) {

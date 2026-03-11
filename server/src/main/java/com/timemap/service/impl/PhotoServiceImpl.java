@@ -11,6 +11,7 @@ import com.timemap.model.dto.UserProfileResponse;
 import com.timemap.model.entity.Photo;
 import com.timemap.model.entity.PhotoLike;
 import com.timemap.model.entity.User;
+import com.timemap.monitor.BusinessMetricsCollector;
 import com.timemap.service.CosService;
 import com.timemap.service.NotificationService;
 import com.timemap.service.PhotoService;
@@ -35,12 +36,14 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
     private final CosService cosService;
     private final PhotoLikeMapper photoLikeMapper;
     private final NotificationService notificationService;
+    private final BusinessMetricsCollector metricsCollector;
 
     @Override
     public PhotoDetailResponse upload(MultipartFile file, Long userId,
                                       Double longitude, Double latitude,
                                       String locationName, String photoDate,
                                       String description, String district) {
+        java.time.Instant start = java.time.Instant.now();
         try {
             String imageUrl = cosService.upload(file);
 
@@ -57,6 +60,12 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
 
             this.save(photo);
             log.info("照片上传成功, userId={}, photoId={}", userId, photo.getId());
+
+            // 监控埋点
+            metricsCollector.recordPhotoUpload(String.valueOf(userId), district != null ? district : "unknown");
+            metricsCollector.recordPhotoUploadDuration(String.valueOf(userId),
+                    java.time.Duration.between(start, java.time.Instant.now()));
+
             return getDetail(photo.getId());
         } catch (Exception e) {
             log.error("照片上传失败", e);
@@ -133,12 +142,14 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
         if (existing != null) {
             photoLikeMapper.deleteById(existing.getId());
             liked = false;
+            metricsCollector.recordLike(String.valueOf(userId), "photo", "unlike");
         } else {
             PhotoLike like = new PhotoLike();
             like.setPhotoId(photoId);
             like.setUserId(userId);
             photoLikeMapper.insert(like);
             liked = true;
+            metricsCollector.recordLike(String.valueOf(userId), "photo", "like");
             // 通知照片作者
             Photo photo = this.getById(photoId);
             if (photo != null) {
@@ -233,6 +244,7 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
         if (photo == null) throw new RuntimeException("照片不存在");
         if (!photo.getUserId().equals(userId)) throw new RuntimeException("无权删除");
         this.removeById(photoId);
+        metricsCollector.recordPhotoDelete(String.valueOf(userId), "user");
     }
 
     @Override

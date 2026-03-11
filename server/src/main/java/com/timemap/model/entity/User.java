@@ -17,6 +17,10 @@ public class User {
 
     private String avatarUrl;
 
+    private String phone;
+
+    private String countryCode;
+
     private Integer gender;
 
     private String country;

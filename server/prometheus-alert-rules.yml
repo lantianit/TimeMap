@@ -1,0 +1,52 @@
+groups:
+  - name: timemap_alerts
+    rules:
+      # 业务异常率过高
+      - alert: HighBusinessErrorRate
+        expr: sum(rate(business_error_total[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "业务异常率过高"
+          description: "过去5分钟内业务异常速率超过 0.5/s"
+
+      # COS 上传失败率过高
+      - alert: HighCosUploadFailRate
+        expr: sum(rate(cos_operation_total{operation="upload",status="error"}[5m])) / sum(rate(cos_operation_total{operation="upload"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "COS 上传失败率超过 10%"
+          description: "照片上传功能可能异常，请检查 COS 服务状态"
+
+      # 照片上传耗时过长
+      - alert: SlowPhotoUpload
+        expr: histogram_quantile(0.95, sum(rate(photo_upload_duration_seconds_bucket[5m])) by (le)) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "照片上传 P95 耗时超过 10 秒"
+          description: "照片上传性能下降，请检查 COS 和网络状况"
+
+      # 管理员登录失败过多
+      - alert: HighAdminLoginFailRate
+        expr: sum(rate(admin_login_total{status="fail"}[15m])) * 60 > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "管理员登录失败频率过高"
+          description: "15分钟内管理员登录失败超过5次/分钟，可能存在暴力破解"
+
+      # 举报量激增
+      - alert: ReportSurge
+        expr: sum(rate(report_submit_total[5m])) * 60 > 10
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "举报量激增"
+          description: "举报提交速率超过 10 条/分钟，持续 10 分钟"

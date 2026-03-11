@@ -1,6 +1,8 @@
 package com.timemap.controller;
 
 import com.timemap.common.Result;
+import com.timemap.model.dto.BindPhoneRequest;
+import com.timemap.model.dto.BindPhoneResponse;
 import com.timemap.model.dto.LoginRequest;
 import com.timemap.model.dto.LoginResponse;
 import com.timemap.service.AuthService;
@@ -20,6 +22,17 @@ public class AuthController {
         try {
             LoginResponse response = authService.login(request);
             return Result.ok(response);
+        } catch (Exception e) {
+            return Result.fail(401, e.getMessage());
+        }
+    }
+
+    @PostMapping("/bind-phone")
+    public Result<BindPhoneResponse> bindPhone(
+            @RequestAttribute("userId") Long userId,
+            @Valid @RequestBody BindPhoneRequest request) {
+        try {
+            return Result.ok(authService.bindPhone(userId, request.getCode()));
         } catch (Exception e) {
             return Result.fail(401, e.getMessage());
         }

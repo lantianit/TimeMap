@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS t_user (
     openid VARCHAR(64) NOT NULL COMMENT '微信openid',
     nickname VARCHAR(64) DEFAULT '' COMMENT '昵称',
     avatar_url VARCHAR(512) DEFAULT '' COMMENT '头像URL',
+    phone VARCHAR(20) DEFAULT NULL COMMENT '手机号',
+    country_code VARCHAR(10) DEFAULT NULL COMMENT '手机号国家区号',
     gender TINYINT DEFAULT 0 COMMENT '性别 0-未知 1-男 2-女',
     country VARCHAR(50) DEFAULT '' COMMENT '国家',
     province VARCHAR(50) DEFAULT '' COMMENT '省份',
