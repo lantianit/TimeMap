@@ -8,8 +8,8 @@ const { request } = require('./request');
 
 // 模板ID（需要替换为你在微信后台申请的真实模板ID）
 const TEMPLATE_IDS = {
-  interaction: '', // 互动提醒模板ID
-  report: ''       // 举报结果模板ID
+  interaction: 'nIJ0znT39u9-wiX1gR-WFMamM1oh4tJ8hEKPmqmc3uM', // 互动提醒模板ID
+  report: 'L74n5hW2b_wOFxmmACVFTbd6oZUTkEs0SJfmR_E5VwQ'       // 举报结果模板ID
 };
 
 /**

@@ -53,3 +53,8 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+# 微信订阅消息模板ID
+subscribe-message:
+  interaction-template-id: ${SUBSCRIBE_INTERACTION_TEMPLATE_ID:}
+  report-template-id: ${SUBSCRIBE_REPORT_TEMPLATE_ID:}

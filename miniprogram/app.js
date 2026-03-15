@@ -1,6 +1,6 @@
 App({
   globalData: {
-    baseUrl: 'http://localhost:8080/api',
+    baseUrl: 'https://maptrace.top/api',
     mapKey: 'HXKBZ-VM7L5-E4TII-ITIGH-2TYAV-BJFYS',
     token: '',
     userInfo: null,
