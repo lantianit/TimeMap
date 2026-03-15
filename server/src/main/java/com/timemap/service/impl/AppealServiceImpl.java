@@ -9,6 +9,7 @@ import com.timemap.mapper.PhotoMapper;
 import com.timemap.mapper.CommentMapper;
 import com.timemap.mapper.CosDeleteRecordMapper;
 import com.timemap.model.dto.*;
+import com.timemap.model.vo.*;
 import com.timemap.model.entity.*;
 import com.timemap.service.AdminAuthService;
 import com.timemap.service.AdminLogService;

@@ -44,8 +44,17 @@ Page({
     this._windowHeight = wx.getSystemInfoSync().windowHeight;
     this._qqmapsdk = new QQMapWX({ key: app.globalData.mapKey });
     this._district = '';
-    // 先解析区划，解析完成后再加载数据
-    this._resolveDistrictThenLoad(this.data.latitude, this.data.longitude);
+
+    // 如果直接传了 district 参数，跳过坐标解析
+    if (options.district) {
+      this._district = decodeURIComponent(options.district);
+      const city = options.city ? decodeURIComponent(options.city) : '';
+      const name = city ? city + ' ' + this._district : this._district;
+      this.setData({ districtName: name });
+      this.loadData(true);
+    } else {
+      this._resolveDistrictThenLoad(this.data.latitude, this.data.longitude);
+    }
   },
 
   onUnload() {

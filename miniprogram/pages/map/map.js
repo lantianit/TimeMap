@@ -970,6 +970,13 @@ Page({
     });
   },
 
+  onRankTap() {
+    this._skipNextShow = true;
+    wx.navigateTo({
+      url: '/pages/district-rank/district-rank'
+    });
+  },
+
   onProfileTap() {
     this._skipNextShow = true;
     wx.navigateTo({ url: '/pages/profile/profile' });

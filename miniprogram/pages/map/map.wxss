@@ -1,3 +1,4 @@
+page { background-color: transparent; }
 .container { width: 100%; height: 100vh; position: relative; }
 .map { width: 100%; height: 100%; }
 
@@ -255,7 +256,7 @@
 /* ===== 上传悬浮条 ===== */
 .upload-float {
   position: fixed;
-  bottom: -300rpx;
+  bottom: -800rpx;
   left: 24rpx; right: 24rpx;
   z-index: 170;
   background: rgba(255,255,255,0.96);
@@ -431,7 +432,7 @@
   bottom: calc(env(safe-area-inset-bottom) + 40rpx);
   left: 50%; transform: translateX(-50%);
   z-index: 100;
-  display: flex; align-items: center; gap: 40rpx;
+  display: flex; align-items: center; gap: 28rpx;
   transition: all 0.25s ease;
 }
 .floating-bar.hidden {

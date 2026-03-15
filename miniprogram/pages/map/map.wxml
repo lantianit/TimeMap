@@ -140,6 +140,7 @@
     latitude="{{latitude}}" longitude="{{longitude}}"
     scale="{{scale}}" markers="{{markers}}"
     show-location
+    enable-poi="{{false}}"
     bindtap="onMapTap"
     bindmarkertap="onMarkerTap"
     bindcallouttap="onMarkerTap"
@@ -194,6 +195,11 @@
     <view class="bar-btn" bindtap="onCommunityTap">
       <view class="bar-icon-circle">
         <image class="bar-icon-img" src="/images/icon-community.svg" />
+      </view>
+    </view>
+    <view class="bar-btn" bindtap="onRankTap">
+      <view class="bar-icon-circle">
+        <image class="bar-icon-img" src="/images/icon-rank.svg" />
       </view>
     </view>
   </view>

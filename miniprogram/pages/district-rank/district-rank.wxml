@@ -1,0 +1,62 @@
+<view class="rank-page">
+
+  <!-- 顶部 Tab 切换 -->
+  <view class="top-bar">
+    <view class="sort-toggle">
+      <view class="sort-item {{sortBy === 'photoCount' ? 'active' : ''}}" bindtap="onSortTap" data-sort="photoCount">📷 照片数</view>
+      <view class="sort-item {{sortBy === 'userCount' ? 'active' : ''}}" bindtap="onSortTap" data-sort="userCount">👥 拍摄人数</view>
+      <view class="sort-item {{sortBy === 'todayCount' ? 'active' : ''}}" bindtap="onSortTap" data-sort="todayCount">🔥 今日活跃</view>
+    </view>
+  </view>
+
+  <!-- 统计摘要 -->
+  <view class="stats-bar" wx:if="{{districtCount > 0}}">
+    <text class="stats-text">共覆盖 {{districtCount}} 个区县 · {{totalPhotos}} 张照片</text>
+  </view>
+
+  <!-- 排行列表 -->
+  <view class="rank-list" wx:if="{{!isEmpty && !loading}}">
+    <view class="rank-item" wx:for="{{rankList}}" wx:key="district" bindtap="onDistrictTap" data-district="{{item.district}}" data-city="{{item.city}}">
+      <view class="rank-index-col">
+        <text class="rank-num {{item.rank <= 3 ? 'top' : ''}}">{{item.rank}}</text>
+      </view>
+      <view class="rank-card">
+        <image class="rank-thumb" src="{{item.latestThumbUrl}}" mode="aspectFill" lazy-load wx:if="{{item.latestThumbUrl}}" />
+        <view class="rank-thumb rank-thumb-empty" wx:else>
+          <text class="rank-thumb-placeholder">📷</text>
+        </view>
+        <view class="rank-info">
+          <text class="rank-district-name">{{item.district}}</text>
+          <text class="rank-city-name" wx:if="{{item.city}}">{{item.city}}</text>
+          <view class="rank-data-row">
+            <view class="rank-data-item {{sortBy === 'photoCount' ? 'highlight' : ''}}">
+              <text class="rank-data-num">{{item.photoCount}}</text>
+              <text class="rank-data-label">张</text>
+            </view>
+            <view class="rank-data-item {{sortBy === 'userCount' ? 'highlight' : ''}}">
+              <text class="rank-data-num">{{item.userCount}}</text>
+              <text class="rank-data-label">人</text>
+            </view>
+            <view class="rank-data-item {{sortBy === 'todayCount' ? 'highlight' : ''}}" wx:if="{{item.todayCount > 0}}">
+              <text class="rank-data-num">{{item.todayCount}}</text>
+              <text class="rank-data-label">今日</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty" wx:if="{{isEmpty && !loading}}">
+    <text class="empty-icon">🏔️</text>
+    <text class="empty-text" wx:if="{{sortBy === 'todayCount'}}">今天还没有区县上传照片</text>
+    <text class="empty-text" wx:else>还没有区县上传照片，快来成为第一个吧</text>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-tip" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+</view>

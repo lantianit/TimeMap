@@ -2,6 +2,7 @@ package com.timemap.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.timemap.model.vo.CommunityPhotoVO;
+import com.timemap.model.vo.DistrictRankVO;
 import com.timemap.model.vo.MyPhotoVO;
 import com.timemap.model.vo.NearbyPhotoVO;
 import com.timemap.model.vo.UserAreaStatVO;
@@ -213,5 +214,41 @@ public interface PhotoMapper extends BaseMapper<Photo> {
         WHERE deleted = 0 AND user_id = #{userId}
     """)
     String findLatestPhotoDate(@Param("userId") Long userId);
+
+    @Select("""
+        <script>
+        SELECT
+            p.district,
+            COUNT(*) AS photo_count,
+            COUNT(DISTINCT p.user_id) AS user_count,
+            SUM(CASE WHEN DATE(p.create_time) = CURDATE() THEN 1 ELSE 0 END) AS today_count,
+            (SELECT COALESCE(p2.thumbnail_url, p2.image_url)
+             FROM t_photo p2
+             WHERE p2.deleted = 0 AND p2.district = p.district
+             ORDER BY p2.create_time DESC LIMIT 1) AS latest_thumb_url
+        FROM t_photo p
+        WHERE p.deleted = 0
+          AND p.district IS NOT NULL AND p.district != ''
+        GROUP BY p.district
+        <if test="sortBy == 'userCount'">
+        ORDER BY user_count DESC, photo_count DESC
+        </if>
+        <if test="sortBy == 'todayCount'">
+        ORDER BY today_count DESC, photo_count DESC
+        </if>
+        <if test="sortBy != 'userCount' and sortBy != 'todayCount'">
+        ORDER BY photo_count DESC, user_count DESC
+        </if>
+        LIMIT #{limit}
+        </script>
+    """)
+    List<DistrictRankVO> findDistrictRanking(@Param("sortBy") String sortBy,
+                                             @Param("limit") int limit);
+
+    @Select("SELECT COUNT(DISTINCT district) FROM t_photo WHERE deleted = 0 AND district IS NOT NULL AND district != ''")
+    long countDistinctDistricts();
+
+    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND district IS NOT NULL AND district != ''")
+    long countAllPhotosWithDistrict();
 
 }

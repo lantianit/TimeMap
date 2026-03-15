@@ -1,7 +1,7 @@
 package com.timemap.service;
 
 import com.timemap.model.dto.*;
-
+import com.timemap.model.vo.*;
 import java.util.List;
 
 public interface ReportService {

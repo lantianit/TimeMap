@@ -13,7 +13,8 @@
     "pages/admin-report-detail/admin-report-detail",
     "pages/admin-appeals/admin-appeals",
     "pages/admin-aggregated-reports/admin-aggregated-reports",
-    "pages/admin-logs/admin-logs"
+    "pages/admin-logs/admin-logs",
+    "pages/district-rank/district-rank"
   ],
   "window": {
     "navigationBarTitleText": "地图时迹",

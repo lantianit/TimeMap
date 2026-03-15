@@ -264,4 +264,20 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
         return resp;
     }
 
+    @Override
+    public Map<String, Object> getDistrictRanking(String sortBy, int limit) {
+        if (sortBy == null || sortBy.isEmpty()) sortBy = "photoCount";
+        var list = photoMapper.findDistrictRanking(sortBy, limit);
+        for (int i = 0; i < list.size(); i++) {
+            list.get(i).setRank(i + 1);
+        }
+        long districtCount = photoMapper.countDistinctDistricts();
+        long totalPhotos = photoMapper.countAllPhotosWithDistrict();
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("districtCount", districtCount);
+        result.put("totalPhotos", totalPhotos);
+        return result;
+    }
+
 }

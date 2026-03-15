@@ -125,6 +125,14 @@ public class PhotoController {
         return Result.success();
     }
 
+    @GetMapping("/district-ranking")
+    public Result<Map<String, Object>> districtRanking(
+            @RequestParam(value = "sortBy", defaultValue = "photoCount") String sortBy,
+            @RequestParam(value = "limit", defaultValue = "50") int limit) {
+        Map<String, Object> data = photoService.getDistrictRanking(sortBy, limit);
+        return Result.success(data);
+    }
+
     @GetMapping("/user/{userId}")
     public Result<Map<String, Object>> userPhotos(
             @PathVariable Long userId,

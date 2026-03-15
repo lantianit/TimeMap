@@ -1,6 +1,7 @@
 package com.timemap.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.timemap.model.vo.DistrictRankVO;
 import com.timemap.model.vo.NearbyPhotoVO;
 import com.timemap.model.vo.PhotoDetailVO;
 import com.timemap.model.entity.Photo;
@@ -37,4 +38,6 @@ public interface PhotoService extends IService<Photo> {
     void deletePhoto(Long photoId, Long userId);
 
     com.timemap.model.vo.UserProfileVO getUserProfile(Long userId);
+
+    Map<String, Object> getDistrictRanking(String sortBy, int limit);
 }

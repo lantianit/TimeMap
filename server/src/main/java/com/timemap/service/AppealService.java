@@ -1,7 +1,7 @@
 package com.timemap.service;
 
 import com.timemap.model.dto.*;
-
+import com.timemap.model.vo.*;
 public interface AppealService {
     void submitAppeal(Long userId, AppealSubmitRequest request);
     AppealPageVO getMyAppeals(Long userId, int page, int size);
