@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout as AntLayout, Menu, Badge, Dropdown, Avatar, Modal, Form, Input, message } from 'antd';
+import { Layout as AntLayout, Menu, Dropdown, Avatar, Modal, Form, Input, message } from 'antd';
 import {
   DashboardOutlined, AlertOutlined, BellOutlined, TeamOutlined,
   PictureOutlined, FileTextOutlined, SettingOutlined, LogoutOutlined,
@@ -39,11 +39,11 @@ export default function Layout() {
     { key: '/dashboard', icon: <DashboardOutlined />, label: '数据看板' },
     {
       key: '/reports', icon: <AlertOutlined />,
-      label: <Badge count={pendingReports} size="small" offset={[10, 0]}><span style={{ color: 'inherit' }}>举报管理</span></Badge>,
+      label: <span>举报管理{pendingReports > 0 && <span style={{ marginLeft: 8, background: '#ff4d4f', color: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 12, lineHeight: '18px', display: 'inline-block' }}>{pendingReports}</span>}</span>,
     },
     {
       key: '/appeals', icon: <BellOutlined />,
-      label: <Badge count={pendingAppeals} size="small" offset={[10, 0]}><span style={{ color: 'inherit' }}>申诉管理</span></Badge>,
+      label: <span>申诉管理{pendingAppeals > 0 && <span style={{ marginLeft: 8, background: '#ff4d4f', color: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 12, lineHeight: '18px', display: 'inline-block' }}>{pendingAppeals}</span>}</span>,
     },
     { key: '/users', icon: <TeamOutlined />, label: '用户管理' },
     {
