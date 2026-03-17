@@ -39,11 +39,11 @@ export default function Layout() {
     { key: '/dashboard', icon: <DashboardOutlined />, label: '数据看板' },
     {
       key: '/reports', icon: <AlertOutlined />,
-      label: <Badge count={pendingReports} size="small" offset={[10, 0]}>举报管理</Badge>,
+      label: <Badge count={pendingReports} size="small" offset={[10, 0]}><span style={{ color: 'inherit' }}>举报管理</span></Badge>,
     },
     {
       key: '/appeals', icon: <BellOutlined />,
-      label: <Badge count={pendingAppeals} size="small" offset={[10, 0]}>申诉管理</Badge>,
+      label: <Badge count={pendingAppeals} size="small" offset={[10, 0]}><span style={{ color: 'inherit' }}>申诉管理</span></Badge>,
     },
     { key: '/users', icon: <TeamOutlined />, label: '用户管理' },
     {
