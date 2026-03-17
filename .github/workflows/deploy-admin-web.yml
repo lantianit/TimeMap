@@ -1,10 +1,12 @@
 # 管理后台前端自动部署 - push 到 main 分支时触发
-# 流程：npm build → SCP 到服务器静态目录
+# 流程：SSH 到服务器 → git pull → npm build → 复制到 Nginx 目录
 #
 # 需要在 GitHub Secrets 中配置：
 #   SERVER_HOST     - 服务器 IP
 #   SERVER_USER     - SSH 用户名
 #   SERVER_SSH_KEY  - SSH 私钥
+#
+# 服务器上需要提前安装 Node.js 18+
 
 name: Deploy Admin Web
 
@@ -16,34 +18,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: admin-web/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: admin-web
-
-      - name: Build
-        run: npm run build
-        working-directory: admin-web
-
-      - name: Deploy to server
-        uses: appleboy/scp-action@v0.1.7
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "admin-web/dist/*"
-          target: /www/wwwroot/admin.maptrace.top
-          strip_components: 2
-          rm: true
+          command_timeout: 5m
+          script: |
+            # 加载 nvm 环境
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            cd /www/maptrace/repo
+
+            # 拉取最新代码
+            git pull origin main
+
+            # 安装依赖并打包
+            cd admin-web
+            npm install
+            npm run build
+
+            # 复制到 Nginx 静态目录
+            rm -rf /www/wwwroot/admin.maptrace.top/*
+            cp -r dist/* /www/wwwroot/admin.maptrace.top/
+
+            echo "✅ admin-web 部署成功"
