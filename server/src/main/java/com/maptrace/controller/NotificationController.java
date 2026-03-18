@@ -3,7 +3,6 @@ package com.maptrace.controller;
 import com.maptrace.common.Result;
 import com.maptrace.model.vo.NotificationVO;
 import com.maptrace.service.NotificationService;
-import com.maptrace.service.WxSubscribeMessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,7 +15,6 @@ import java.util.Map;
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final WxSubscribeMessageService wxSubscribeMessageService;
 
     @GetMapping("/list")
     public Result<List<NotificationVO>> list(
@@ -35,19 +33,6 @@ public class NotificationController {
     @PostMapping("/readAll")
     public Result<Void> readAll(@RequestAttribute("userId") Long userId) {
         notificationService.markAllRead(userId);
-        return Result.success();
-    }
-
-    @PostMapping("/subscribe")
-    public Result<Void> reportSubscription(
-            @RequestAttribute("userId") Long userId,
-            @RequestBody Map<String, List<String>> body) {
-        List<String> templateIds = body.get("templateIds");
-        if (templateIds != null) {
-            for (String templateId : templateIds) {
-                wxSubscribeMessageService.recordSubscription(userId, templateId);
-            }
-        }
         return Result.success();
     }
 }

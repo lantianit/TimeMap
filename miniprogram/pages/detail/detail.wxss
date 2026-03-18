@@ -1,12 +1,14 @@
 .container {
-  padding: 30rpx;
+  padding: 0 30rpx 30rpx;
+  background: #f5f5f5;
+  min-height: 100vh;
 }
 
 .photo-area {
   position: relative;
-  border-radius: 16rpx;
+  border-radius: 0 0 16rpx 16rpx;
   overflow: hidden;
-  margin-bottom: 30rpx;
+  margin: 0 -30rpx 30rpx;
 }
 
 .photo-swiper {

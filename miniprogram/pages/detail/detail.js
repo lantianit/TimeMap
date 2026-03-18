@@ -1,5 +1,4 @@
 const { request, checkLogin } = require('../../utils/request');
-const { requestSubscribe } = require('../../utils/subscribe');
 const app = getApp();
 
 const REPORT_REASONS = ['色情低俗', '违法违规', '侵权', '虚假信息', '人身攻击', '其他'];
@@ -22,6 +21,7 @@ Page({
     replyParentId: 0,
     replyToUserId: 0,
     keyboardHeight: 0,
+    myAvatarUrl: '',
     showReportDesc: false,
     reportDescValue: '',
     _pendingReportType: '',
@@ -31,6 +31,8 @@ Page({
 
   onLoad(options) {
     this._photoId = null;
+    const ui = app.globalData.userInfo || {};
+    this.setData({ myAvatarUrl: ui.avatarUrl || '' });
     if (options.ids) {
       this.loadBatch(options.ids);
     } else if (options.id) {
@@ -213,11 +215,6 @@ Page({
         });
         this.setData({ comments });
       }
-      // 评论成功后请求订阅授权（同一会话只弹一次，避免频繁打扰）
-      if (!app.globalData._subscribedInteraction) {
-        requestSubscribe('interaction');
-        app.globalData._subscribedInteraction = true;
-      }
     }).catch(() => {
       if (body.parentId === 0) {
         const comments = this.data.comments.filter(c => c.id !== optimistic.id);
@@ -377,11 +374,6 @@ Page({
     request(url, 'POST')
       .then(() => {
         wx.showToast({ title: '举报已提交', icon: 'success' });
-        // 举报成功后请求订阅授权（同一会话只弹一次）
-        if (!app.globalData._subscribedReport) {
-          requestSubscribe('report');
-          app.globalData._subscribedReport = true;
-        }
       })
       .catch((err) => { wx.showToast({ title: (err && err.message) || '举报失败', icon: 'none' }); });
   },

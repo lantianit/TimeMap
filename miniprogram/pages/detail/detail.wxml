@@ -164,7 +164,7 @@
 
 <!-- 固定底部输入栏 -->
 <view class="input-bar" style="bottom: {{keyboardHeight}}px;">
-  <image class="input-bar-avatar" src="{{photo.avatarUrl || '/images/icon-user.svg'}}" />
+  <image class="input-bar-avatar" src="{{myAvatarUrl || '/images/icon-user.svg'}}" />
   <input class="input-bar-input"
     placeholder="{{replyPlaceholder}}"
     value="{{inputValue}}"

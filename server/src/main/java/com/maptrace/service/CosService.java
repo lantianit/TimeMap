@@ -13,6 +13,12 @@ import org.springframework.web.multipart.MultipartFile;
 import com.maptrace.common.BusinessException;
 import com.maptrace.common.ErrorCode;
 
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
@@ -68,6 +74,16 @@ public class CosService {
             metricsCollector.recordCosOperation("delete", "error");
         }
     }
+
+    /** 微信头像域名 */
+    private static final Set<String> WX_AVATAR_HOSTS = Set.of("thirdwx.qlogo.cn", "wx.qlogo.cn");
+    /** 头像下载最大 5MB */
+    private static final long MAX_AVATAR_DOWNLOAD_SIZE = 5 * 1024 * 1024;
+
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif");
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
@@ -125,6 +141,115 @@ public class CosService {
             log.error("COS 上传失败", e);
             metricsCollector.recordCosOperation("upload", "error");
             throw new BusinessException(ErrorCode.PHOTO_UPLOAD_FAILED, "图片上传失败，请稍后重试");
+        }
+    }
+
+    /**
+     * 判断是否为微信头像 URL
+     */
+    public boolean isWxAvatarUrl(String url) {
+        if (url == null || url.isBlank()) return false;
+        try {
+            String host = URI.create(url).getHost();
+            return host != null && WX_AVATAR_HOSTS.contains(host.toLowerCase());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 判断是否为本地临时文件路径（微信小程序 chooseImage 返回的临时路径）
+     * 如 http://tmp/xxx、wxfile://xxx、file://xxx
+     */
+    public boolean isLocalTempPath(String url) {
+        if (url == null || url.isBlank()) return false;
+        String lower = url.toLowerCase();
+        return lower.startsWith("http://tmp/")
+                || lower.startsWith("http://tmp")
+                || lower.startsWith("wxfile://")
+                || lower.startsWith("file://");
+    }
+
+    /**
+     * 判断是否为本站 COS URL（已转存过的不重复处理）
+     */
+    public boolean isCosUrl(String url) {
+        if (url == null || url.isBlank()) return false;
+        String cosHost = cosConfig.getBucket() + ".cos." + cosConfig.getRegion() + ".myqcloud.com";
+        return url.contains(cosHost);
+    }
+
+    /**
+     * 从 URL 下载图片并转存到 COS（流式传输，不落盘）
+     * 用于微信头像转存，失败返回 null（不阻断业务）
+     */
+    public String uploadFromUrl(String imageUrl, Long userId) {
+        if (imageUrl == null || imageUrl.isBlank()) return null;
+
+        java.time.Instant start = java.time.Instant.now();
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(imageUrl))
+                    .timeout(Duration.ofSeconds(10))
+                    .GET()
+                    .build();
+
+            HttpResponse<InputStream> response = HTTP_CLIENT.send(request,
+                    HttpResponse.BodyHandlers.ofInputStream());
+
+            if (response.statusCode() != 200) {
+                log.warn("下载微信头像失败，HTTP {}: {}", response.statusCode(), imageUrl);
+                return null;
+            }
+
+            // 检查 Content-Length，超过 5MB 放弃
+            long contentLength = response.headers().firstValueAsLong("Content-Length").orElse(-1);
+            if (contentLength > MAX_AVATAR_DOWNLOAD_SIZE) {
+                log.warn("微信头像过大 ({}bytes)，跳过转存: {}", contentLength, imageUrl);
+                return null;
+            }
+
+            // 读取流（限制最大 5MB）
+            byte[] data;
+            try (InputStream is = response.body()) {
+                data = is.readNBytes((int) MAX_AVATAR_DOWNLOAD_SIZE);
+            }
+
+            if (data.length == 0) {
+                log.warn("微信头像内容为空: {}", imageUrl);
+                return null;
+            }
+
+            // 推断 Content-Type，默认 jpeg
+            String contentType = response.headers().firstValue("Content-Type").orElse("image/jpeg");
+            String ext = contentType.contains("png") ? ".png"
+                    : contentType.contains("gif") ? ".gif"
+                    : contentType.contains("webp") ? ".webp"
+                    : ".jpg";
+
+            String key = "avatars/" + userId + "/" + UUID.randomUUID() + ext;
+
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(data.length);
+            metadata.setContentType(contentType);
+
+            PutObjectRequest putRequest = new PutObjectRequest(
+                    cosConfig.getBucket(), key,
+                    new java.io.ByteArrayInputStream(data), metadata);
+            cosClient.putObject(putRequest);
+
+            String url = "https://" + cosConfig.getBucket() + ".cos." + cosConfig.getRegion() + ".myqcloud.com/" + key;
+            log.info("微信头像转存成功: userId={}, url={}", userId, url);
+
+            metricsCollector.recordCosOperation("avatar_transfer", "success");
+            metricsCollector.recordCosOperationDuration("avatar_transfer",
+                    Duration.between(start, java.time.Instant.now()));
+
+            return url;
+        } catch (Exception e) {
+            log.warn("微信头像转存失败，降级使用原始URL: userId={}, url={}", userId, imageUrl, e);
+            metricsCollector.recordCosOperation("avatar_transfer", "error");
+            return null;
         }
     }
 }

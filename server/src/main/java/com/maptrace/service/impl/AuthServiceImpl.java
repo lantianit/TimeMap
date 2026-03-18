@@ -12,6 +12,7 @@ import com.maptrace.model.dto.WxSessionResponse;
 import com.maptrace.model.entity.User;
 import com.maptrace.monitor.BusinessMetricsCollector;
 import com.maptrace.service.AuthService;
+import com.maptrace.service.CosService;
 import com.maptrace.util.JwtUtil;
 import com.maptrace.util.WxApiUtil;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final JwtUtil jwtUtil;
     private final BusinessMetricsCollector metricsCollector;
+    private final CosService cosService;
 
     @Override
     public LoginVO login(LoginRequest request) {
@@ -53,6 +55,9 @@ public class AuthServiceImpl implements AuthService {
         } else {
             userMapper.updateById(user);
         }
+
+        // 微信头像转存到 COS（登录后异步处理，失败不影响登录）
+        transferWxAvatarIfNeeded(user);
 
         // 4. 签发 JWT Token
         String token = jwtUtil.generateToken(user.getId(), openid);
@@ -85,7 +90,11 @@ public class AuthServiceImpl implements AuthService {
             user.setNickname(request.getNickname().trim());
         }
         if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
-            user.setAvatarUrl(request.getAvatarUrl().trim());
+            String avatarUrl = request.getAvatarUrl().trim();
+            // 拒绝无效的本地临时路径（如 http://tmp/xxx、wxfile://xxx）
+            if (!cosService.isLocalTempPath(avatarUrl)) {
+                user.setAvatarUrl(avatarUrl);
+            }
         }
         if (request.getGender() != null) {
             user.setGender(request.getGender());
@@ -115,5 +124,22 @@ public class AuthServiceImpl implements AuthService {
             return phone == null ? "" : phone;
         }
         return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
+    }
+
+    /**
+     * 如果用户头像是微信临时 URL，转存到 COS
+     * 转存失败不影响业务流程
+     */
+    private void transferWxAvatarIfNeeded(User user) {
+        String avatarUrl = user.getAvatarUrl();
+        if (avatarUrl == null || avatarUrl.isBlank()) return;
+        if (cosService.isCosUrl(avatarUrl)) return; // 已经是 COS 链接
+        if (!cosService.isWxAvatarUrl(avatarUrl)) return; // 不是微信头像
+
+        String cosUrl = cosService.uploadFromUrl(avatarUrl, user.getId());
+        if (cosUrl != null) {
+            user.setAvatarUrl(cosUrl);
+            userMapper.updateById(user);
+        }
     }
 }

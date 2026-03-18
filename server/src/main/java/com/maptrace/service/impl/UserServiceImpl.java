@@ -35,7 +35,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             user.setNickname(request.getNickname().trim());
         }
         if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
-            user.setAvatarUrl(request.getAvatarUrl().trim());
+            String avatarUrl = request.getAvatarUrl().trim();
+
+            // 拒绝无效的本地临时路径（如 http://tmp/xxx、wxfile://xxx）
+            if (cosService.isLocalTempPath(avatarUrl)) {
+                // 忽略无效头像，不更新
+            } else if (cosService.isWxAvatarUrl(avatarUrl) && !cosService.isCosUrl(avatarUrl)) {
+                // 微信头像转存到 COS
+                String cosUrl = cosService.uploadFromUrl(avatarUrl, userId);
+                if (cosUrl != null) {
+                    if (user.getAvatarUrl() != null && cosService.isCosUrl(user.getAvatarUrl())) {
+                        cosService.scheduleDelete(user.getAvatarUrl(), "avatar", userId, "用户更换头像");
+                    }
+                    user.setAvatarUrl(cosUrl);
+                }
+            } else if (cosService.isCosUrl(avatarUrl) || avatarUrl.startsWith("https://")) {
+                // 合法的网络 URL（COS 或其他 https），允许更新
+                if (user.getAvatarUrl() != null && cosService.isCosUrl(user.getAvatarUrl())
+                        && !avatarUrl.equals(user.getAvatarUrl())) {
+                    cosService.scheduleDelete(user.getAvatarUrl(), "avatar", userId, "用户更换头像");
+                }
+                user.setAvatarUrl(avatarUrl);
+            }
         }
         if (request.getGender() != null) {
             user.setGender(request.getGender());
@@ -70,6 +91,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = this.getById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        // 旧头像如果是 COS 的，标记延迟删除
+        if (user.getAvatarUrl() != null && cosService.isCosUrl(user.getAvatarUrl())) {
+            cosService.scheduleDelete(user.getAvatarUrl(), "avatar", userId, "用户更换头像");
         }
         String avatarUrl = cosService.upload(file);
         user.setAvatarUrl(avatarUrl);

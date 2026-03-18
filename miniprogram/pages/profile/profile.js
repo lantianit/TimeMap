@@ -239,13 +239,21 @@ Page({
 
     this.setData({ savingProfile: true });
 
-    const isLocal = !/^https?:\/\//.test(avatarPreview);
+    // 判断是否为本地临时路径（微信 chooseAvatar 返回 http://tmp/xxx 或 wxfile://xxx）
+    const isLocal = /^(http:\/\/tmp|wxfile:\/\/|file:\/\/)/.test(avatarPreview)
+      || !/^https:\/\//.test(avatarPreview);
     const avatarTask = isLocal
       ? this._uploadAvatarWithRetry(avatarPreview, 2)
       : Promise.resolve(avatarPreview);
 
     avatarTask
-      .then(avatarUrl => request('/user/profile', 'POST', { nickname, avatarUrl }))
+      .then(avatarUrl => {
+        // 二次校验：确保是合法的 https URL
+        if (!/^https:\/\/.+\..+/.test(avatarUrl)) {
+          throw new Error('头像上传失败，请重试');
+        }
+        return request('/user/profile', 'POST', { nickname, avatarUrl });
+      })
       .then(res => {
         const info = res.data || {};
         app.setUserInfo(info);
@@ -274,7 +282,11 @@ Page({
    */
   _uploadAvatarWithRetry(filePath, retries) {
     return uploadFile('/user/avatar', filePath)
-      .then(r => (r.data && r.data.avatarUrl) || filePath)
+      .then(r => {
+        const url = r.data && r.data.avatarUrl;
+        if (!url) throw new Error('上传成功但未返回头像地址');
+        return url;
+      })
       .catch(err => {
         if (retries > 0) {
           return new Promise(resolve => setTimeout(resolve, 1000))
