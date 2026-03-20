@@ -187,7 +187,8 @@
           <text class="sheet-desc">点击下方头像，从微信中选取</text>
         </view>
         <view class="sheet-center-block">
-          <button class="sheet-avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+          <!-- 预览放在 button 外，避免 tmp 路径嵌套触发渲染层问题 -->
+          <view class="sheet-avatar-picker">
             <view class="sheet-avatar-ring {{avatarPreview ? 'has-avatar' : ''}}">
               <image class="sheet-avatar-img" src="{{avatarPreview || '/images/icon-user.svg'}}" mode="aspectFill" />
               <view class="sheet-avatar-overlay" wx:if="{{!avatarPreview}}">
@@ -195,7 +196,10 @@
                 <text class="overlay-text">点击选择</text>
               </view>
             </view>
-          </button>
+            <button class="sheet-avatar-hit" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+              <text class="sheet-avatar-hit-label">选择微信头像</text>
+            </button>
+          </view>
         </view>
         <view class="sheet-action">
           <button class="sheet-primary-btn {{avatarPreview ? '' : 'disabled'}}" bindtap="onSetupNext">

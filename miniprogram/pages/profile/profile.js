@@ -294,7 +294,13 @@ Page({
   },
 
   onChooseAvatar(e) {
-    const url = e.detail && e.detail.avatarUrl;
+    const d = (e && e.detail) || {};
+    const err = d.errMsg || '';
+    if (err && /fail/.test(err)) {
+      wx.showToast({ title: '选择失败，请重试', icon: 'none' });
+      return;
+    }
+    const url = d.avatarUrl;
     if (!url) return;
     this.setData({ avatarPreview: url });
     this.updateCanSubmit();

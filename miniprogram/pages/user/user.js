@@ -1,4 +1,5 @@
 const { request, checkLogin } = require('../../utils/request');
+const { idsEqual } = require('../../utils/jsonSafe');
 const app = getApp();
 
 function normalizeTopAreas(areas) {
@@ -27,8 +28,13 @@ Page({
     }
     // 判断是否是自己
     const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
-    this.setData({ isMe: myId && String(myId) === String(this._userId) });
+    this.setData({ isMe: !!(myId && idsEqual(myId, this._userId)) });
     this.loadUserPhotos(true);
+  },
+
+  onShow() {
+    const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
+    this.setData({ isMe: !!(myId && idsEqual(myId, this._userId)) });
   },
 
   onReachBottom() {

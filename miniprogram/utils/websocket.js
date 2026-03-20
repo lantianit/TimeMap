@@ -9,6 +9,8 @@
  *   ws.off('new_message', handler);
  *   ws.disconnect();
  */
+const { parseJsonPreservingBigInts } = require('./jsonSafe');
+
 const HEARTBEAT_INTERVAL = 30000; // 30秒心跳
 const RECONNECT_DELAY = 3000;     // 3秒后重连
 const MAX_RECONNECT = 10;         // 最大重连次数
@@ -66,7 +68,9 @@ function connect() {
 
   socketTask.onMessage((res) => {
     try {
-      const msg = JSON.parse(res.data);
+      const msg = typeof res.data === 'string'
+        ? parseJsonPreservingBigInts(res.data)
+        : res.data;
       if (msg.type === 'pong') return; // 心跳回复，忽略
       console.log('[WS] 收到消息:', msg.type);
       emit(msg.type, msg.data);

@@ -1,3 +1,5 @@
+const { parseJsonPreservingBigInts } = require('./utils/jsonSafe');
+
 App({
   globalData: {
     // 自动判断环境：正式版用线上，开发版/体验版用本地
@@ -16,11 +18,16 @@ App({
     if (token) {
       this.globalData.token = token;
       this.globalData.userInfo = wx.getStorageSync('userInfo') || null;
+      if (this.globalData.userInfo && this.globalData.userInfo.userId) {
+        this.globalData.userInfo.userId = String(this.globalData.userInfo.userId);
+      }
       this.globalData.needPhone = !!authState.needPhone;
       this.globalData.needProfile = !!authState.needProfile;
       // 已登录，自动连接 WebSocket
       const ws = require('./utils/websocket');
       ws.connect();
+      // 用接口刷新 userId 等，覆盖本地 storage 里可能因 JSON 数字精度错误缓存的 userId
+      this.syncUserInfo().catch(() => {});
     }
   },
 
@@ -42,6 +49,7 @@ App({
   },
 
   setUserInfo(info) {
+    if (info && info.userId !== undefined) info.userId = String(info.userId);
     this.globalData.userInfo = Object.assign({}, this.globalData.userInfo || {}, info || {});
     wx.setStorageSync('userInfo', this.globalData.userInfo);
   },
@@ -58,10 +66,20 @@ App({
             url: this.globalData.baseUrl + '/auth/login',
             method: 'POST',
             data: { code: loginRes.code },
+            dataType: 'text',
             header: { 'Content-Type': 'application/json' },
             success: (resp) => {
-              if (resp.data && resp.data.code === 0) {
-                const d = resp.data.data;
+              let body;
+              try {
+                body = typeof resp.data === 'string'
+                  ? parseJsonPreservingBigInts(resp.data)
+                  : resp.data;
+              } catch (e) {
+                reject(new Error('登录响应解析失败'));
+                return;
+              }
+              if (body && body.code === 0) {
+                const d = body.data;
                 this.globalData.token = d.token;
                 wx.setStorageSync('token', d.token);
                 this.setAuthState({ needPhone: d.needPhone, needProfile: d.needProfile });
@@ -71,7 +89,7 @@ App({
                 ws.connect();
                 resolve(d);
               } else {
-                reject(new Error((resp.data && resp.data.message) || '登录失败'));
+                reject(new Error((body && body.message) || '登录失败'));
               }
             },
             fail: reject
@@ -91,18 +109,28 @@ App({
       wx.request({
         url: this.globalData.baseUrl + '/user/info',
         method: 'GET',
+        dataType: 'text',
         header: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + this.globalData.token
         },
         success: (resp) => {
-          if (resp.data && resp.data.code === 0) {
-            const info = resp.data.data || {};
+          let body;
+          try {
+            body = typeof resp.data === 'string'
+              ? parseJsonPreservingBigInts(resp.data)
+              : resp.data;
+          } catch (e) {
+            reject(new Error('用户信息解析失败'));
+            return;
+          }
+          if (body && body.code === 0) {
+            const info = body.data || {};
             this.setUserInfo(info);
             this.setAuthState(info);
             resolve(info);
           } else {
-            reject(new Error((resp.data && resp.data.message) || '获取用户信息失败'));
+            reject(new Error((body && body.message) || '获取用户信息失败'));
           }
         },
         fail: reject

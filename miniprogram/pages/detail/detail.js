@@ -1,4 +1,5 @@
 const { request, checkLogin } = require('../../utils/request');
+const { idsEqual } = require('../../utils/jsonSafe');
 const app = getApp();
 
 const REPORT_REASONS = ['色情低俗', '违法违规', '侵权', '虚假信息', '人身攻击', '其他'];
@@ -43,6 +44,14 @@ Page({
     }
   },
 
+  onShow() {
+    // 冷启动后 syncUserInfo 异步完成时，刷新「是否本人」以免缓存的错 userId 导致删除按钮不显示
+    if (!this.data.photos || !this.data.photos.length) return;
+    const photos = this.data.photos.map((p) => this._formatPhoto({ ...p }));
+    const cur = this.data.current || 0;
+    this.setData({ photos, photo: photos[cur] || photos[0] });
+  },
+
   loadBatch(ids) {
     request('/photo/batch', 'GET', { ids })
       .then((res) => {
@@ -76,7 +85,7 @@ Page({
     if (photo.likeCount === undefined || photo.likeCount === null) photo.likeCount = 0;
     if (photo.liked === undefined || photo.liked === null) photo.liked = false;
     const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
-    photo.isOwner = myId && String(photo.userId) === String(myId);
+    photo.isOwner = !!(myId && idsEqual(photo.userId, myId));
     return photo;
   },
 
@@ -306,7 +315,7 @@ Page({
     if (!checkLogin()) return;
     const { id, userId, idx, replyIdx } = e.currentTarget.dataset;
     const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
-    const isOwner = String(userId) === String(myId);
+    const isOwner = idsEqual(userId, myId);
     const itemList = isOwner ? ['删除'] : ['举报'];
 
     wx.showActionSheet({
@@ -386,7 +395,7 @@ Page({
     const userId = e.currentTarget.dataset.userId;
     if (!userId) return;
     const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
-    if (String(userId) === String(myId)) {
+    if (idsEqual(userId, myId)) {
       wx.navigateTo({ url: '/pages/profile/profile' });
       return;
     }
@@ -468,7 +477,7 @@ Page({
     const photo = this.data.photo;
     if (!photo || !photo.userId) return;
     const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
-    if (String(photo.userId) === String(myId)) {
+    if (idsEqual(photo.userId, myId)) {
       wx.navigateTo({ url: '/pages/profile/profile' });
       return;
     }

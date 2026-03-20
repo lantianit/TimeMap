@@ -1,4 +1,5 @@
 const { request, checkLogin } = require('../../utils/request');
+const { idsEqual } = require('../../utils/jsonSafe');
 const ws = require('../../utils/websocket');
 const app = getApp();
 
@@ -108,6 +109,18 @@ Page({
 
   onShow() {
     this._pageVisible = true;
+    var ui = app.globalData.userInfo || {};
+    var uid = ui.userId != null ? String(ui.userId) : '';
+    if (uid && uid !== this.data.myUserId) {
+      var self = this;
+      var msgs = this.data.messages.map(function(m) {
+        var x = Object.assign({}, m);
+        x.isMine = idsEqual(x.fromUserId, uid);
+        return x;
+      });
+      this.setData({ myUserId: uid });
+      this._render(msgs, false);
+    }
     this.markRead();
     this._registerWs();
     this._startPoll();
@@ -223,7 +236,7 @@ Page({
     msg.fromUserId = msg.fromUserId == null ? '' : String(msg.fromUserId);
     msg.toUserId = msg.toUserId == null ? '' : String(msg.toUserId);
     msg.fromAvatarUrl = msg.fromAvatarUrl || '';
-    msg.isMine = msg.fromUserId === this.data.myUserId;
+    msg.isMine = idsEqual(msg.fromUserId, this.data.myUserId);
     msg.timestamp = t.getTime();
     msg.sending = !!msg.sending;
     msg.sendFail = !!msg.sendFail;
