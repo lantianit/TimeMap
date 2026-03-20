@@ -129,20 +129,6 @@ export interface PendingReportCountVO {
   appealCount: number;
 }
 
-export interface AggregatedReportVO {
-  targetType: string;
-  targetId: string;
-  targetPreview: string;
-  targetImageUrl: string;
-  targetOwnerUserId: string;
-  targetOwnerNickname: string;
-  reportCount: number;
-  reasons: string[];
-  earliestTime: string;
-  latestTime: string;
-  reportIds: string[];
-}
-
 // ===== Appeals =====
 export interface AppealVO {
   id: string;

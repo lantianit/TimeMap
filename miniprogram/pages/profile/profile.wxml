@@ -5,7 +5,7 @@
     <view class="login-hero">
       <view class="hero-bg"></view>
       <view class="hero-content">
-        <image class="login-logo" src="/images/logo-shiji.svg" mode="aspectFit" />
+        <image class="login-logo" src="/images/icon.png" mode="aspectFit" />
         <text class="login-app-name">地图时迹</text>
         <text class="login-slogan">用照片标记时间，用地图丈量记忆</text>
       </view>
@@ -202,7 +202,7 @@
           </view>
         </view>
         <view class="sheet-action">
-          <button class="sheet-primary-btn {{avatarPreview ? '' : 'disabled'}}" bindtap="onSetupNext">
+          <button class="sheet-primary-btn {{avatarPreview && !avatarDownloading ? '' : 'disabled'}}" bindtap="onSetupNext">
             下一步
           </button>
         </view>

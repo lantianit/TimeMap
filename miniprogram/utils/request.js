@@ -43,6 +43,7 @@ function request(url, method, data) {
         }
       },
       fail(err) {
+        console.error('[request] 请求失败:', url, JSON.stringify(err));
         reject(err);
       }
     });
@@ -79,10 +80,14 @@ function uploadFile(url, filePath, formData) {
           wx.navigateTo({ url: '/pages/profile/profile' });
           reject(data);
         } else {
+          // 服务端返回非 0 code 时也打日志，便于体验版排查
+          console.error('[uploadFile] 服务端拒绝:', url, 'response:', data);
           reject(data);
         }
       },
       fail(err) {
+        // 这里不只是 reject，打出 err 便于排查：例如域名未配置/网络不可达等
+        console.error('[uploadFile] 上传失败:', url, filePath, err);
         reject(err);
       }
     });

@@ -14,6 +14,7 @@ Page({
     userInfo: {},
     profileNickname: '',
     avatarPreview: '',
+    avatarDownloading: false,
     canSubmit: false,
     savingProfile: false,
     isAdmin: false,
@@ -31,12 +32,28 @@ Page({
     setupStep: 1
   },
 
+  _formatErr(err) {
+    if (!err) return '';
+    // 小程序网络错误通常在 err.errMsg 里更有信息
+    const msg = err.errMsg || err.message;
+    if (msg) return msg;
+    try {
+      return JSON.stringify(err);
+    } catch (e) {
+      return String(err);
+    }
+  },
+
   // 本次 onShow 是否已尝试过自动弹窗（防止重复弹）
   _autoSheetTriggered: false,
 
   onShow() {
     this._autoSheetTriggered = false;
-    this._syncLocalState();
+    // 如果资料设置弹窗正在显示（用户正在选头像/填昵称），
+    // 不要重置 avatarPreview / profileNickname，否则从裁剪页返回时会丢失用户刚选的头像。
+    if (!this.data.showSetupSheet) {
+      this._syncLocalState();
+    }
     if (app.isLoggedIn()) {
       this.loadUserMeta();
       this.loadMyPhotos(true);
@@ -103,10 +120,13 @@ Page({
         const info = res.data || {};
         app.setUserInfo(info);
         app.setAuthState(info);
+
+        // 弹窗打开时，保留用户正在编辑的头像和昵称，不被服务端旧数据覆盖
+        const isEditing = this.data.showSetupSheet;
         this.setData({
           userInfo: Object.assign({}, this.data.userInfo, info),
-          profileNickname: info.nickname || this.data.profileNickname,
-          avatarPreview: info.avatarUrl || this.data.avatarPreview,
+          profileNickname: isEditing ? this.data.profileNickname : (info.nickname || this.data.profileNickname),
+          avatarPreview: isEditing ? this.data.avatarPreview : (info.avatarUrl || this.data.avatarPreview),
           isAdmin: !!info.isAdmin
         });
         this.updateCanSubmit();
@@ -236,12 +256,12 @@ Page({
 
     this.setData({ savingProfile: true });
 
-    // 判断是否为本地临时路径（微信 chooseAvatar 返回 http://tmp/xxx 或 wxfile://xxx）
-    const isLocal = /^(http:\/\/tmp|wxfile:\/\/|file:\/\/)/.test(avatarPreview)
-      || !/^https:\/\//.test(avatarPreview);
-    const avatarTask = isLocal
-      ? this._uploadAvatarWithRetry(avatarPreview, 2)
-      : Promise.resolve(avatarPreview);
+    // 选择头像可能返回：
+    // - https://...（远程地址，无需上传）
+    // - http://tmp/...（临时下载地址，需要先下载到 tempFilePath 再 wx.uploadFile）
+    // - wxfile://... / file://...（可直接作为 filePath 上传）
+    const isHttps = /^https:\/\//.test(avatarPreview);
+    const avatarTask = isHttps ? Promise.resolve(avatarPreview) : this._uploadAvatarWithRetry(avatarPreview, 2);
 
     avatarTask
       .then(avatarUrl => {
@@ -267,7 +287,7 @@ Page({
         this.loadUnreadCount();
       })
       .catch(err => {
-        wx.showToast({ title: (err && err.message) || '保存失败，请重试', icon: 'none' });
+        wx.showToast({ title: this._formatErr(err) || '保存失败，请重试', icon: 'none' });
       })
       .finally(() => this.setData({ savingProfile: false }));
   },
@@ -278,19 +298,34 @@ Page({
    * @param {number} retries 剩余重试次数
    */
   _uploadAvatarWithRetry(filePath, retries) {
-    return uploadFile('/user/avatar', filePath)
+    console.log('[_uploadAvatarWithRetry] filePath:', filePath, 'retries:', retries);
+    return this._ensureUploadableFilePath(filePath)
+      .then(localFilePath => {
+        console.log('[_uploadAvatarWithRetry] uploading localFilePath:', localFilePath);
+        return uploadFile('/user/avatar', localFilePath);
+      })
       .then(r => {
         const url = r.data && r.data.avatarUrl;
         if (!url) throw new Error('上传成功但未返回头像地址');
+        console.log('[_uploadAvatarWithRetry] 上传成功:', url);
         return url;
       })
       .catch(err => {
+        console.error('[_uploadAvatarWithRetry] 失败:', filePath, err);
         if (retries > 0) {
           return new Promise(resolve => setTimeout(resolve, 1000))
             .then(() => this._uploadAvatarWithRetry(filePath, retries - 1));
         }
-        throw err;
+        throw new Error(this._formatErr(err) || '头像上传失败');
       });
+  },
+
+  /**
+   * 确保 filePath 可用于 wx.uploadFile。
+   * chooseAvatar 返回的 http://tmp/...、wxfile://... 均可直接上传，无需 downloadFile。
+   */
+  _ensureUploadableFilePath(filePath) {
+    return Promise.resolve(filePath);
   },
 
   onChooseAvatar(e) {
@@ -302,7 +337,11 @@ Page({
     }
     const url = d.avatarUrl;
     if (!url) return;
-    this.setData({ avatarPreview: url });
+
+    // chooseAvatar 返回的路径（http://tmp/...、wxfile://...、https://...）
+    // 都可以直接用于 <image> 预览和 wx.uploadFile，无需 downloadFile 中转。
+    console.log('[onChooseAvatar] avatarUrl:', url);
+    this.setData({ avatarPreview: url, avatarDownloading: false });
     this.updateCanSubmit();
   },
 

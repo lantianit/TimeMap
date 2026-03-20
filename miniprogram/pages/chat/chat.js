@@ -446,7 +446,8 @@ Page({
         return m;
       });
       self._render(msgs, false);
-    }).catch(function() {
+    }).catch(function(err) {
+      console.error('[Chat] 发送失败:', JSON.stringify(err));
       var msgs = self.data.messages.map(function(m) {
         if (m.id === tempId) return Object.assign({}, m, { sending: false, sendFail: true });
         return m;

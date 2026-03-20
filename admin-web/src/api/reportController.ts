@@ -1,7 +1,7 @@
 import request from '../utils/request';
 import type {
   AdminReportPageVO, AdminReportDetailVO, PendingReportCountVO,
-  AggregatedReportVO, ResolveReportParams, RejectReportParams, BatchReportParams,
+  ResolveReportParams, RejectReportParams, BatchReportParams,
   UserViolationPageVO,
 } from './typings';
 
@@ -32,10 +32,6 @@ export const batchRejectReports = (data: BatchReportParams) =>
 /** 待处理数量 */
 export const getPendingCount = () =>
   request.get<unknown, PendingReportCountVO>('/api/admin/report/pending-count');
-
-/** 聚合举报 */
-export const getAggregatedReports = (params: Record<string, unknown>) =>
-  request.get<unknown, AggregatedReportVO[]>('/api/admin/report/aggregated', { params });
 
 /** 用户违规记录 */
 export const getUserViolations = (params: Record<string, unknown>) =>
