@@ -29,13 +29,16 @@ Page({
     reportDescValue: '',
     _pendingReportType: '',
     _pendingReportId: '',
-    _pendingReportReason: ''
+    _pendingReportReason: '',
+    todayDate: ''
   },
 
   onLoad(options) {
     this._photoId = null;
     const ui = app.globalData.userInfo || {};
-    this.setData({ myAvatarUrl: ui.avatarUrl || '' });
+    const now = new Date();
+    const todayDate = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    this.setData({ myAvatarUrl: ui.avatarUrl || '', todayDate });
     if (options.ids) {
       this.loadBatch(options.ids);
     } else if (options.id) {
@@ -444,6 +447,23 @@ Page({
         '&focusImage=' + encodeURIComponent(p.thumbnailUrl || p.imageUrl) +
         '&focusName=' + encodeURIComponent(p.locationName || '')
     });
+  },
+
+  onPhotoDateChange(e) {
+    const newDate = e.detail.value;
+    if (!newDate || newDate === this.data.photo.photoDate) return;
+    const currentIdx = this.data.current;
+    request('/photo/updateDate?photoId=' + this._photoId + '&photoDate=' + newDate, 'POST')
+      .then(() => {
+        this.setData({
+          'photo.photoDate': newDate,
+          [`photos[${currentIdx}].photoDate`]: newDate
+        });
+        wx.showToast({ title: '已修改', icon: 'success' });
+      })
+      .catch(() => {
+        wx.showToast({ title: '修改失败', icon: 'none' });
+      });
   },
 
   onDeletePhoto() {

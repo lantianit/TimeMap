@@ -109,8 +109,7 @@ Page({
     emptyState: false,
     // 照片显隐
     photosHidden: false,
-    // 定位按钮显隐
-    showLocateBtn: false,
+    // 定位按钮显隐（已移除）
     // 临时标记预览图
     tempPreviewImage: '',
     // 聚焦标记（从详情页跳转）
@@ -122,8 +121,7 @@ Page({
     areaFilterUsers: 0,
     // 未读消息
     unreadTotal: 0,
-    // 拖拽状态
-    isDragging: false
+    // 拖拽状态（已移除）
   },
 
   onLoad(options) {
@@ -377,24 +375,50 @@ Page({
   },
 
   onLocateTap() {
-    if (!this.data.hasLocation) {
-      this.getCurrentLocation();
-      return;
-    }
-    this.mapCtx.moveToLocation({
-      latitude: this._userLat,
-      longitude: this._userLng,
-      success: () => {
-        this.setData({ showLocateBtn: false });
-      }
-    });
+    // 保留方法以防其他地方引用，实际功能已合并到 onRefreshTap
+    this.onRefreshTap();
   },
 
   // ========== 刷新按钮 ==========
 
   onRefreshTap() {
-    this.loadNearbyPhotos();
-    this._showToast('已刷新');
+    // 先定位到当前位置，再刷新照片
+    if (this._userLat && this._userLng) {
+      this.mapCtx.moveToLocation({
+        latitude: this._userLat,
+        longitude: this._userLng,
+        complete: () => {
+          this._currentLat = this._userLat;
+          this._currentLng = this._userLng;
+          this._updateDistrict(this._userLat, this._userLng);
+          this.loadNearbyPhotos();
+          this._showToast('已定位并刷新');
+        }
+      });
+    } else {
+      // 未获取过定位，重新获取
+      wx.getLocation({
+        type: 'gcj02',
+        success: (res) => {
+          this._userLat = res.latitude;
+          this._userLng = res.longitude;
+          this._currentLat = res.latitude;
+          this._currentLng = res.longitude;
+          this.setData({ latitude: res.latitude, longitude: res.longitude, hasLocation: true });
+          this._updateDistrict(res.latitude, res.longitude);
+          this.mapCtx.moveToLocation({
+            latitude: res.latitude,
+            longitude: res.longitude
+          });
+          this.loadNearbyPhotos();
+          this._showToast('已定位并刷新');
+        },
+        fail: () => {
+          this.loadNearbyPhotos();
+          this._showToast('定位失败，已刷新照片');
+        }
+      });
+    }
   },
 
   // ========== 时光穿梭 ==========
@@ -893,6 +917,21 @@ Page({
     if (!selectedImages.length) { this._showToast('请先选择照片'); return; }
     if (!uploadDate) { this._showToast('请选择日期'); return; }
 
+    // 二次确认拍摄日期
+    wx.showModal({
+      title: '确认拍摄日期',
+      content: '拍摄日期为「' + (this.data.uploadDateDisplay === '今天' ? '今天 (' + uploadDate + ')' : uploadDate) + '」，确认上传？',
+      confirmText: '确认上传',
+      cancelText: '修改日期',
+      success: (res) => {
+        if (!res.confirm) return;
+        this._doUpload();
+      }
+    });
+  },
+
+  _doUpload() {
+    const { tapLat, tapLng, uploadDate, tapLocationName, selectedImages } = this.data;
     this.setData({ uploading: true, uploadProgress: 0 });
     const total = selectedImages.length;
     let failed = 0;
@@ -961,11 +1000,7 @@ Page({
   },
 
   onRegionChange(e) {
-    if (e.type === 'begin') {
-      if (!this.data.isDragging) this.setData({ isDragging: true });
-    }
     if (e.type === 'end') {
-      if (this.data.isDragging) this.setData({ isDragging: false });
       this.mapCtx.getCenterLocation({
         success: (res) => {
           this._currentLat = res.latitude;
@@ -974,26 +1009,10 @@ Page({
           this.debouncedLoadPhotos();
         }
       });
-      this._checkLocateVisible();
     }
   },
 
-  /** 判断用户定位点是否在当前可视区域内，不在则显示定位按钮 */
-  _checkLocateVisible() {
-    if (!this._userLat || !this._userLng) return;
-    this.mapCtx.getRegion({
-      success: (res) => {
-        const { southwest, northeast } = res;
-        const inView = this._userLat >= southwest.latitude
-          && this._userLat <= northeast.latitude
-          && this._userLng >= southwest.longitude
-          && this._userLng <= northeast.longitude;
-        if (this.data.showLocateBtn !== !inView) {
-          this.setData({ showLocateBtn: !inView });
-        }
-      }
-    });
-  },
+  // _checkLocateVisible 已移除（定位按钮已删除）
 
   /** 切换照片显示/隐藏 */
   onTogglePhotos() {

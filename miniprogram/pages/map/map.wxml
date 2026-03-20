@@ -8,7 +8,7 @@
   <view class="loading-bar {{loadingPhotos ? 'show' : ''}}"></view>
 
   <!-- 顶部居中：区县名卡片 -->
-  <view class="top-district-card {{isDragging ? 'drag-hide' : ''}}" wx:if="{{districtName}}" bindtap="onDistrictTap">
+  <view class="top-district-card" wx:if="{{districtName}}" bindtap="onDistrictTap">
     <view class="district-row">
       <image class="district-icon" src="/images/icon-location.svg" />
       <text class="district-text">{{districtName}}</text>
@@ -29,7 +29,7 @@
   </view>
 
   <!-- 右侧工具栏（去掉了"+"按钮） -->
-  <view class="right-toolbar {{isDragging ? 'drag-hide' : ''}}">
+  <view class="right-toolbar">
     <view class="toolbar-btn" bindtap="onProfileTap">
       <image class="toolbar-icon-img" src="/images/icon-user.svg" />
     </view>
@@ -40,9 +40,7 @@
       <image class="toolbar-icon-img" src="/images/icon-camera.svg" />
       <view class="toolbar-slash" wx:if="{{photosHidden}}"></view>
     </view>
-    <view class="toolbar-btn" bindtap="onLocateTap" wx:if="{{showLocateBtn}}">
-      <image class="toolbar-icon-img" src="/images/icon-locate.svg" />
-    </view>
+
     <view class="toolbar-btn" bindtap="onUploadHintTap">
       <image class="toolbar-icon-img" src="/images/icon-plus.svg" />
     </view>
@@ -111,7 +109,7 @@
   </view>
 
   <!-- 时光筛选卡片 -->
-  <view class="filter-card {{filterActive ? 'active' : ''}} {{isDragging || showUploadBar || showHidePhotosBar || showFilterPanel ? 'hidden' : ''}}" wx:if="{{filterActive}}" bindtap="onFilterTap" hover-class="filter-card-hover">
+  <view class="filter-card {{filterActive ? 'active' : ''}} {{showUploadBar || showHidePhotosBar || showFilterPanel ? 'hidden' : ''}}" wx:if="{{filterActive}}" bindtap="onFilterTap" hover-class="filter-card-hover">
     <view class="filter-bar-indicator"></view>
     <view class="filter-content">
       <view class="filter-main-row">
@@ -178,7 +176,7 @@
   </map>
 
   <!-- 悬浮底部栏 -->
-  <view class="floating-bar {{isDragging || showUploadBar || showHidePhotosBar || showFilterPanel ? 'hidden' : ''}}">
+  <view class="floating-bar {{showUploadBar || showHidePhotosBar || showFilterPanel ? 'hidden' : ''}}">
     <view class="bar-btn" bindtap="onChatTap">
       <view class="bar-icon-circle">
         <image class="bar-icon-img" src="/images/icon-chat.svg" />

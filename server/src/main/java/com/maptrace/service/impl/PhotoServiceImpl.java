@@ -257,6 +257,15 @@ public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements
     }
 
     @Override
+    public void updatePhotoDate(Long photoId, Long userId, String photoDate) {
+        Photo photo = this.getById(photoId);
+        if (photo == null) throw new BusinessException(ErrorCode.PHOTO_NOT_FOUND);
+        if (!photo.getUserId().equals(userId)) throw new BusinessException(ErrorCode.PHOTO_DELETE_FORBIDDEN);
+        photo.setPhotoDate(LocalDate.parse(photoDate, DateTimeFormatter.ISO_LOCAL_DATE));
+        this.updateById(photo);
+    }
+
+    @Override
     public UserProfileVO getUserProfile(Long userId) {
         User user = userMapper.selectById(userId);
         if (user == null) return null;

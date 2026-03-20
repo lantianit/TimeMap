@@ -37,6 +37,8 @@ public interface PhotoService extends IService<Photo> {
 
     void deletePhoto(Long photoId, Long userId);
 
+    void updatePhotoDate(Long photoId, Long userId, String photoDate);
+
     com.maptrace.model.vo.UserProfileVO getUserProfile(Long userId);
 
     Map<String, Object> getDistrictRanking(String sortBy, int limit);

@@ -73,6 +73,17 @@
   margin-left: 20rpx;
 }
 
+.date-edit-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.date-edit-icon {
+  font-size: 28rpx;
+  color: #07c160;
+}
+
 .location-row .info-value {
   margin-left: 0;
 }

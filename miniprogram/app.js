@@ -4,7 +4,7 @@ App({
   globalData: {
     // 自动判断环境：正式版用线上，开发版/体验版用本地
     // 真机调试：用局域网 IP，确保手机能访问；调试完后改回 localhost
-    baseUrl: 'https://maptrace.top/api',
+    baseUrl: 'http://192.168.1.2:8080/api',
     mapKey: 'HXKBZ-VM7L5-E4TII-ITIGH-2TYAV-BJFYS',
     token: '',
     userInfo: null,

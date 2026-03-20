@@ -117,6 +117,15 @@ public class PhotoController {
         return Result.success(result);
     }
 
+    @PostMapping("/updateDate")
+    public Result<Void> updatePhotoDate(
+            @RequestParam("photoId") Long photoId,
+            @RequestParam("photoDate") String photoDate,
+            @RequestAttribute("userId") Long userId) {
+        photoService.updatePhotoDate(photoId, userId, photoDate);
+        return Result.success();
+    }
+
     @PostMapping("/delete")
     public Result<Void> deletePhoto(
             @RequestParam("photoId") Long photoId,

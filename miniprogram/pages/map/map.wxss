@@ -32,16 +32,6 @@ page { background-color: transparent; }
   100% { transform: translateX(100%); }
 }
 
-/* ===== 拖拽时隐藏 UI ===== */
-.drag-hide {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transition: opacity 0.2s ease;
-}
-.top-district-card, .right-toolbar {
-  transition: opacity 0.2s ease;
-}
-
 /* ===== 照片缩略图标记 ===== */
 .photo-callout {
   display: flex; flex-direction: column; align-items: center;

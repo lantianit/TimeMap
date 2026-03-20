@@ -29,7 +29,15 @@
   <view class="info-card">
     <view class="info-row">
       <text class="info-label">拍摄日期</text>
-      <text class="info-value">{{photo.photoDate}}</text>
+      <view class="info-value-wrap" wx:if="{{photo.isOwner}}">
+        <picker mode="date" value="{{photo.photoDate}}" start="1900-01-01" end="{{todayDate}}" bindchange="onPhotoDateChange">
+          <view class="date-edit-btn">
+            <text class="info-value">{{photo.photoDate}}</text>
+            <text class="date-edit-icon">✎</text>
+          </view>
+        </picker>
+      </view>
+      <text class="info-value" wx:else>{{photo.photoDate}}</text>
     </view>
     <view class="info-row">
       <text class="info-label">上传时间</text>
