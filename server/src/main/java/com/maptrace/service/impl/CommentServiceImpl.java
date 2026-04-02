@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,9 +50,7 @@ public class CommentServiceImpl implements CommentService {
                 .eq(Comment::getPhotoId, photoId)
                 .eq(Comment::getParentId, 0L));
 
-        List<CommentVO> list = p.getRecords().stream()
-                .map(c -> toResponse(c, currentUserId))
-                .collect(Collectors.toList());
+        List<CommentVO> list = batchToResponse(p.getRecords(), currentUserId);
 
         CommentPageVO resp = new CommentPageVO();
         resp.setList(list);
@@ -68,9 +67,7 @@ public class CommentServiceImpl implements CommentService {
                 .orderByAsc(Comment::getCreateTime);
         commentMapper.selectPage(p, qw);
 
-        List<CommentVO> list = p.getRecords().stream()
-                .map(c -> toResponse(c, currentUserId))
-                .collect(Collectors.toList());
+        List<CommentVO> list = batchToResponse(p.getRecords(), currentUserId);
 
         CommentPageVO resp = new CommentPageVO();
         resp.setList(list);
@@ -205,40 +202,61 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private CommentVO toResponse(Comment c, Long currentUserId) {
-        CommentVO r = new CommentVO();
-        r.setId(c.getId());
-        r.setUserId(c.getUserId());
-        r.setContent(c.getContent());
-        r.setLikeCount(c.getLikeCount());
-        r.setReplyCount(c.getReplyCount());
-        r.setCreateTime(c.getCreateTime() != null ? c.getCreateTime().toString() : "");
-        r.setReplies(new ArrayList<>());
+        return batchToResponse(List.of(c), currentUserId).get(0);
+    }
 
-        // 用户信息
-        User user = userMapper.selectById(c.getUserId());
-        if (user != null) {
-            r.setNickname(user.getNickname());
-            r.setAvatarUrl(user.getAvatarUrl());
-        }
+    /** 批量转换评论，避免 N+1 查询 */
+    private List<CommentVO> batchToResponse(List<Comment> comments, Long currentUserId) {
+        if (comments.isEmpty()) return new ArrayList<>();
 
-        // 被回复者昵称
-        if (c.getReplyToUserId() != null && c.getReplyToUserId() != 0L) {
-            User replyTo = userMapper.selectById(c.getReplyToUserId());
-            if (replyTo != null) {
-                r.setReplyToNickname(replyTo.getNickname());
+        // 批量查用户信息
+        Set<Long> userIds = new HashSet<>();
+        for (Comment c : comments) {
+            userIds.add(c.getUserId());
+            if (c.getReplyToUserId() != null && c.getReplyToUserId() != 0L) {
+                userIds.add(c.getReplyToUserId());
             }
         }
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap()
+                : userMapper.selectBatchIds(userIds).stream()
+                    .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        // 当前用户是否点赞
+        // 批量查当前用户的点赞状态
+        Set<Long> likedCommentIds = Collections.emptySet();
         if (currentUserId != null && currentUserId != 0L) {
-            long likeCount = commentLikeMapper.selectCount(new LambdaQueryWrapper<CommentLike>()
-                    .eq(CommentLike::getCommentId, c.getId())
-                    .eq(CommentLike::getUserId, currentUserId));
-            r.setLiked(likeCount > 0);
-        } else {
-            r.setLiked(false);
+            List<Long> commentIds = comments.stream().map(Comment::getId).collect(Collectors.toList());
+            likedCommentIds = commentLikeMapper.selectList(new LambdaQueryWrapper<CommentLike>()
+                    .eq(CommentLike::getUserId, currentUserId)
+                    .in(CommentLike::getCommentId, commentIds))
+                    .stream().map(CommentLike::getCommentId).collect(Collectors.toSet());
         }
 
-        return r;
+        Set<Long> finalLikedIds = likedCommentIds;
+        return comments.stream().map(c -> {
+            CommentVO r = new CommentVO();
+            r.setId(c.getId());
+            r.setUserId(c.getUserId());
+            r.setContent(c.getContent());
+            r.setLikeCount(c.getLikeCount());
+            r.setReplyCount(c.getReplyCount());
+            r.setCreateTime(c.getCreateTime() != null ? c.getCreateTime().toString() : "");
+            r.setReplies(new ArrayList<>());
+
+            User user = userMap.get(c.getUserId());
+            if (user != null) {
+                r.setNickname(user.getNickname());
+                r.setAvatarUrl(user.getAvatarUrl());
+            }
+
+            if (c.getReplyToUserId() != null && c.getReplyToUserId() != 0L) {
+                User replyTo = userMap.get(c.getReplyToUserId());
+                if (replyTo != null) {
+                    r.setReplyToNickname(replyTo.getNickname());
+                }
+            }
+
+            r.setLiked(finalLikedIds.contains(c.getId()));
+            return r;
+        }).collect(Collectors.toList());
     }
 }

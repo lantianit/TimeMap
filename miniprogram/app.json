@@ -14,7 +14,9 @@
     "pages/admin-appeals/admin-appeals",
     "pages/admin-aggregated-reports/admin-aggregated-reports",
     "pages/admin-logs/admin-logs",
-    "pages/district-rank/district-rank"
+    "pages/district-rank/district-rank",
+    "pages/follow-list/follow-list",
+    "pages/footprint/footprint"
   ],
   "window": {
     "navigationBarTitleText": "地图时迹",

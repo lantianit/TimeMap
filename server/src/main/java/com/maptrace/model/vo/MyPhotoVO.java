@@ -15,4 +15,5 @@ public class MyPhotoVO {
     private String createTime;
     private Integer commentCount;
     private Integer likeCount;
+    private Integer visibility;
 }

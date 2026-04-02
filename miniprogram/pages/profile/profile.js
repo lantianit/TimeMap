@@ -29,7 +29,11 @@ Page({
     pendingAppealCount: 0,
     // 弹窗
     showSetupSheet: false,
-    setupStep: 1
+    setupStep: 1,
+    // 关注统计
+    followCount: { followingCount: 0, followerCount: 0, mutualCount: 0 },
+    // 菜单展开
+    showMenu: false
   },
 
   _formatErr(err) {
@@ -58,6 +62,7 @@ Page({
       this.loadUserMeta();
       this.loadMyPhotos(true);
       this.loadUnreadCount();
+      this.loadFollowCount();
     }
   },
 
@@ -362,6 +367,10 @@ Page({
     this.setData({ showSetupSheet: true, setupStep: 1 });
   },
 
+  onToggleMenu() {
+    this.setData({ showMenu: !this.data.showMenu });
+  },
+
   onPhotoTap(e) {
     wx.navigateTo({ url: '/pages/detail/detail?id=' + e.currentTarget.dataset.id });
   },
@@ -370,6 +379,23 @@ Page({
   onGoMyReports() { wx.navigateTo({ url: '/pages/my-reports/my-reports' }); },
   onGoMyViolations() { wx.navigateTo({ url: '/pages/my-violations/my-violations' }); },
   onGoAdminReports() { wx.navigateTo({ url: '/pages/admin-reports/admin-reports' }); },
+  onGoFollowList() { wx.navigateTo({ url: '/pages/follow-list/follow-list' }); },
+
+  onFootprintTap() {
+    const ui = this.data.userInfo || {};
+    wx.navigateTo({
+      url: '/pages/footprint/footprint?nickname=' + encodeURIComponent(ui.nickname || '') +
+        '&avatarUrl=' + encodeURIComponent(ui.avatarUrl || '')
+    });
+  },
+
+  loadFollowCount() {
+    request('/follow/count', 'GET')
+      .then(res => {
+        this.setData({ followCount: res.data || {} });
+      })
+      .catch(() => {});
+  },
 
   onLogout() {
     wx.showModal({

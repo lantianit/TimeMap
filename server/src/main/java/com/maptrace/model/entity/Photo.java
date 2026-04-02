@@ -35,6 +35,9 @@ public class Photo {
     /** 行政区划（区/县） */
     private String district;
 
+    /** 可见性: 0=仅自己 1=互关可见 2=所有人可见 */
+    private Integer visibility;
+
     /** 拍摄日期 */
     private LocalDate photoDate;
 

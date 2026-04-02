@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="tabs">
+    <view class="tab {{tab === 'following' ? 'active' : ''}}" bindtap="onTab" data-tab="following">
+      关注 {{followingCount || ''}}
+    </view>
+    <view class="tab {{tab === 'followers' ? 'active' : ''}}" bindtap="onTab" data-tab="followers">
+      粉丝 {{followerCount || ''}}
+    </view>
+    <view class="tab {{tab === 'mutual' ? 'active' : ''}}" bindtap="onTab" data-tab="mutual">
+      互关 {{mutualCount || ''}}
+    </view>
+  </view>
+
+  <view class="list">
+    <view class="item" wx:for="{{list}}" wx:key="userId" bindtap="onUserTap" data-user-id="{{item.userId}}" data-nickname="{{item.nickname}}">
+      <image class="avatar" src="{{item.avatarUrl || '/images/icon-user.svg'}}" mode="aspectFill" />
+      <view class="info">
+        <text class="nick">{{item.nickname || '微信用户'}}</text>
+        <text class="mutual-tag" wx:if="{{item.mutual}}">互相关注</text>
+      </view>
+      <view class="follow-btn {{item.following ? (item.mutual ? 'mutual' : 'following') : ''}}" catchtap="onFollowTap" data-user-id="{{item.userId}}" data-idx="{{index}}">
+        <text wx:if="{{item.mutual}}">互关</text>
+        <text wx:elif="{{item.following}}">已关注</text>
+        <text wx:else>+ 关注</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty" wx:if="{{!list.length && !loading}}">
+    <text wx:if="{{tab === 'following'}}">还没有关注任何人</text>
+    <text wx:elif="{{tab === 'followers'}}">还没有粉丝</text>
+    <text wx:else>还没有互关好友</text>
+  </view>
+  <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
+  <view class="loading-tip" wx:if="{{!hasMore && list.length}}">没有更多了</view>
+</view>

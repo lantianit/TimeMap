@@ -10,10 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -44,9 +42,10 @@ public class DashboardServiceImpl implements DashboardService {
     private DashboardStatsVO buildStats() {
         DashboardStatsVO s = new DashboardStatsVO();
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime thirtyDaysAgo = LocalDate.now().minusDays(30).atStartOfDay();
+        String thirtyDaysAgo = LocalDate.now().minusDays(30).atStartOfDay()
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-        // Counts
+        // Counts — 使用 selectCount 只返回数字，不拉全量数据
         s.setTodayReports(reportMapper.selectCount(new LambdaQueryWrapper<Report>()
                 .ge(Report::getCreateTime, todayStart)));
         s.setPendingReports(reportMapper.selectCount(new LambdaQueryWrapper<Report>()
@@ -58,68 +57,43 @@ public class DashboardServiceImpl implements DashboardService {
         s.setTotalUsers(userMapper.selectCount(new LambdaQueryWrapper<User>()));
         s.setTotalPhotos(photoMapper.selectCount(new LambdaQueryWrapper<Photo>()));
 
-        // Report trend (30 days)
-        List<Report> recentReports = reportMapper.selectList(new LambdaQueryWrapper<Report>()
-                .ge(Report::getCreateTime, thirtyDaysAgo)
-                .orderByAsc(Report::getCreateTime));
-        s.setReportTrend(buildDailyTrend(recentReports.stream()
-                .map(r -> r.getCreateTime().toLocalDate()).collect(Collectors.toList()), 30));
+        // 趋势数据 — SQL GROUP BY 聚合，不拉全量记录
+        List<DashboardStatsVO.TrendItem> reportTrend = reportMapper.countDailyReports(thirtyDaysAgo);
+        s.setReportTrend(fillMissingDays(reportTrend, 30));
 
-        // Reason distribution
-        Map<String, Long> reasonMap = recentReports.stream()
-                .collect(Collectors.groupingBy(r -> r.getReason() != null ? r.getReason() : "未知", Collectors.counting()));
-        s.setReasonDistribution(reasonMap.entrySet().stream().map(e -> {
-            DashboardStatsVO.DistributionItem item = new DashboardStatsVO.DistributionItem();
-            item.setName(e.getKey());
-            item.setValue(e.getValue());
-            return item;
-        }).collect(Collectors.toList()));
+        s.setReasonDistribution(reportMapper.countReasonDistribution(thirtyDaysAgo));
 
-        // User growth trend
-        List<User> recentUsers = userMapper.selectList(new LambdaQueryWrapper<User>()
-                .ge(User::getCreateTime, thirtyDaysAgo)
-                .orderByAsc(User::getCreateTime));
-        s.setUserGrowthTrend(buildDailyTrend(recentUsers.stream()
-                .map(u -> u.getCreateTime().toLocalDate()).collect(Collectors.toList()), 30));
+        List<DashboardStatsVO.TrendItem> userTrend = userMapper.countDailyUsers(thirtyDaysAgo);
+        s.setUserGrowthTrend(fillMissingDays(userTrend, 30));
 
-        // Photo upload trend
-        List<Photo> recentPhotos = photoMapper.selectList(new LambdaQueryWrapper<Photo>()
-                .ge(Photo::getCreateTime, thirtyDaysAgo)
-                .orderByAsc(Photo::getCreateTime));
-        s.setPhotoUploadTrend(buildDailyTrend(recentPhotos.stream()
-                .map(p -> p.getCreateTime().toLocalDate()).collect(Collectors.toList()), 30));
+        List<DashboardStatsVO.TrendItem> photoTrend = photoMapper.countDailyPhotos(thirtyDaysAgo);
+        s.setPhotoUploadTrend(fillMissingDays(photoTrend, 30));
 
-        // Avg handle time, resolve rate, reject rate
-        List<Report> handledReports = reportMapper.selectList(new LambdaQueryWrapper<Report>()
-                .in(Report::getStatus, 1, 2)
-                .isNotNull(Report::getHandledTime)
-                .ge(Report::getCreateTime, thirtyDaysAgo));
-        if (!handledReports.isEmpty()) {
-            double totalHours = handledReports.stream()
-                    .filter(r -> r.getHandledTime() != null && r.getCreateTime() != null)
-                    .mapToDouble(r -> java.time.Duration.between(r.getCreateTime(), r.getHandledTime()).toMinutes() / 60.0)
-                    .average().orElse(0);
-            s.setAvgHandleTimeHours(Math.round(totalHours * 10) / 10.0);
-            long resolved = handledReports.stream().filter(r -> r.getStatus() == 1).count();
-            long rejected = handledReports.stream().filter(r -> r.getStatus() == 2).count();
-            long total = resolved + rejected;
-            s.setResolveRate(total > 0 ? Math.round(resolved * 1000.0 / total) / 10.0 : 0);
-            s.setRejectRate(total > 0 ? Math.round(rejected * 1000.0 / total) / 10.0 : 0);
-        }
+        // 处理效率 — SQL 聚合
+        Double avgHours = reportMapper.avgHandleTimeHours(thirtyDaysAgo);
+        s.setAvgHandleTimeHours(avgHours != null ? Math.round(avgHours * 10) / 10.0 : 0);
+        long resolved = reportMapper.countResolved(thirtyDaysAgo);
+        long rejected = reportMapper.countRejected(thirtyDaysAgo);
+        long total = resolved + rejected;
+        s.setResolveRate(total > 0 ? Math.round(resolved * 1000.0 / total) / 10.0 : 0);
+        s.setRejectRate(total > 0 ? Math.round(rejected * 1000.0 / total) / 10.0 : 0);
 
         return s;
     }
 
-    private List<DashboardStatsVO.TrendItem> buildDailyTrend(List<LocalDate> dates, int days) {
-        Map<LocalDate, Long> countMap = dates.stream()
-                .collect(Collectors.groupingBy(d -> d, Collectors.counting()));
+    /** 补齐 SQL 结果中缺失的日期（count=0 的天不会出现在 GROUP BY 结果中） */
+    private List<DashboardStatsVO.TrendItem> fillMissingDays(List<DashboardStatsVO.TrendItem> sqlResult, int days) {
+        Map<String, Long> countMap = new HashMap<>();
+        for (DashboardStatsVO.TrendItem item : sqlResult) {
+            countMap.put(item.getDate(), item.getCount());
+        }
         List<DashboardStatsVO.TrendItem> trend = new ArrayList<>();
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM-dd");
         for (int i = days - 1; i >= 0; i--) {
             LocalDate date = LocalDate.now().minusDays(i);
             DashboardStatsVO.TrendItem item = new DashboardStatsVO.TrendItem();
             item.setDate(date.format(fmt));
-            item.setCount(countMap.getOrDefault(date, 0L));
+            item.setCount(countMap.getOrDefault(date.format(fmt), 0L));
             trend.add(item);
         }
         return trend;

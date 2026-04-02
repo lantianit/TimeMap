@@ -23,6 +23,10 @@
           <text class="summary-value">{{user.likeCount || 0}}</text>
           <text class="summary-label">获赞</text>
         </view>
+        <view class="summary-item" bindtap="onFollowCountTap">
+          <text class="summary-value">{{followCount.mutualCount || 0}}</text>
+          <text class="summary-label">互关</text>
+        </view>
       </view>
       <view class="recent-row" wx:if="{{user.latestPhotoDate}}">
         <text class="recent-tag">最近记录</text>
@@ -31,18 +35,26 @@
     </view>
   </view>
 
-  <!-- 发私信按钮（不展示给自己） -->
-  <view class="msg-btn-wrap" wx:if="{{!isMe}}">
+  <!-- 关注 + 私信按钮（不展示给自己） -->
+  <view class="action-btn-wrap" wx:if="{{!isMe}}">
+    <view class="follow-btn {{followStatus === 'mutual' ? 'mutual' : followStatus === 'following' ? 'following' : ''}}" bindtap="onFollowTap">
+      <text wx:if="{{followStatus === 'mutual'}}">互相关注 ✓</text>
+      <text wx:elif="{{followStatus === 'following'}}">已关注</text>
+      <text wx:else>+ 关注</text>
+    </view>
     <view class="msg-btn" bindtap="onSendMessage">
       <text class="msg-btn-icon">💬</text>
-      <text class="msg-btn-text">发私信</text>
+      <text class="msg-btn-text">私信</text>
     </view>
   </view>
 
   <view class="area-card" wx:if="{{topAreas.length}}">
     <view class="section-head">
       <text class="section-title">足迹亮点</text>
-      <text class="section-subtitle">按上传区域统计</text>
+      <view class="section-more" bindtap="onFootprintTap">
+        <text class="section-subtitle">查看全部</text>
+        <text class="section-arrow-sm">▸</text>
+      </view>
     </view>
     <view class="area-list">
       <view class="area-item" wx:for="{{topAreas}}" wx:key="name">

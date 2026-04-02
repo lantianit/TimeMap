@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS `t_photo` (
   `latitude` DOUBLE NOT NULL COMMENT '纬度',
   `location_name` VARCHAR(200) DEFAULT '' COMMENT '地点名称',
   `district` VARCHAR(100) DEFAULT '' COMMENT '行政区划（区/县）',
+  `visibility` TINYINT NOT NULL DEFAULT 2 COMMENT '可见性: 0=仅自己 1=互关可见 2=所有人可见',
   `photo_date` DATE NOT NULL COMMENT '拍摄日期',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -56,7 +57,8 @@ CREATE TABLE IF NOT EXISTS `t_photo` (
   INDEX `idx_user_id` (`user_id`),
   INDEX `idx_photo_date` (`photo_date`),
   INDEX `idx_location` (`latitude`, `longitude`),
-  INDEX `idx_district_date` (`district`, `photo_date`, `deleted`)
+  INDEX `idx_district_date` (`district`, `photo_date`, `deleted`),
+  INDEX `idx_visibility` (`visibility`, `deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='照片表';
 
 -- -----------------------------------------------------------
@@ -279,7 +281,20 @@ CREATE TABLE IF NOT EXISTS `t_cos_delete_record` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='COS文件延迟删除记录';
 
 -- -----------------------------------------------------------
--- 15. 用户订阅消息授权记录表
+-- 15. 关注关系表
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `t_follow` (
+  `id` BIGINT NOT NULL COMMENT '主键',
+  `user_id` BIGINT NOT NULL COMMENT '关注者ID（谁发起关注）',
+  `target_user_id` BIGINT NOT NULL COMMENT '被关注者ID',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '关注时间',
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uk_user_target` (`user_id`, `target_user_id`),
+  INDEX `idx_target_user` (`target_user_id`, `user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='关注关系表';
+
+-- -----------------------------------------------------------
+-- 16. 用户订阅消息授权记录表
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `t_subscribe_message` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',

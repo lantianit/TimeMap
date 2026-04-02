@@ -18,7 +18,9 @@ Page({
     page: 1,
     hasMore: true,
     loading: false,
-    isMe: false
+    isMe: false,
+    followStatus: '', // '', 'following', 'mutual'
+    followCount: { followingCount: 0, followerCount: 0, mutualCount: 0 }
   },
 
   onLoad(options) {
@@ -26,10 +28,13 @@ Page({
     if (options.nickname) {
       wx.setNavigationBarTitle({ title: decodeURIComponent(options.nickname) });
     }
-    // 判断是否是自己
     const myId = app.globalData.userInfo && app.globalData.userInfo.userId;
     this.setData({ isMe: !!(myId && idsEqual(myId, this._userId)) });
     this.loadUserPhotos(true);
+    if (!this.data.isMe && app.isLoggedIn()) {
+      this.loadFollowStatus();
+    }
+    this.loadFollowCount();
   },
 
   onShow() {
@@ -80,6 +85,57 @@ Page({
     const user = this.data.user || {};
     wx.navigateTo({
       url: '/pages/chat/chat?userId=' + this._userId +
+        '&nickname=' + encodeURIComponent(user.nickname || '') +
+        '&avatarUrl=' + encodeURIComponent(user.avatarUrl || '')
+    });
+  },
+
+  loadFollowStatus() {
+    request('/follow/status', 'GET', { targetUserId: this._userId })
+      .then(res => {
+        const d = res.data || {};
+        let status = '';
+        if (d.mutual) status = 'mutual';
+        else if (d.followed) status = 'following';
+        this.setData({ followStatus: status });
+      })
+      .catch(() => {});
+  },
+
+  loadFollowCount() {
+    request('/follow/count', 'GET', { targetUserId: this._userId })
+      .then(res => {
+        this.setData({ followCount: res.data || {} });
+      })
+      .catch(() => {});
+  },
+
+  onFollowTap() {
+    if (!checkLogin()) return;
+    request('/follow/toggle?targetUserId=' + this._userId, 'POST')
+      .then(res => {
+        const d = res.data || {};
+        let status = '';
+        if (d.mutual) status = 'mutual';
+        else if (d.followed) status = 'following';
+        this.setData({ followStatus: status });
+        this.loadFollowCount();
+      })
+      .catch(() => {
+        wx.showToast({ title: '操作失败', icon: 'none' });
+      });
+  },
+
+  onFollowCountTap() {
+    wx.navigateTo({
+      url: '/pages/follow-list/follow-list?userId=' + this._userId
+    });
+  },
+
+  onFootprintTap() {
+    const user = this.data.user || {};
+    wx.navigateTo({
+      url: '/pages/footprint/footprint?userId=' + this._userId +
         '&nickname=' + encodeURIComponent(user.nickname || '') +
         '&avatarUrl=' + encodeURIComponent(user.avatarUrl || '')
     });

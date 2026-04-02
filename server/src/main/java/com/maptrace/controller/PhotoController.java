@@ -36,11 +36,12 @@ public class PhotoController {
             @RequestParam(value = "locationName", required = false) String locationName,
             @RequestParam(value = "district", required = false) String district,
             @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "visibility", required = false, defaultValue = "2") Integer visibility,
             @RequestAttribute("userId") Long userId) {
         userService.checkBanUpload(userId);
         ThrowUtils.throwIf(file.isEmpty(), ErrorCode.PARAMS_ERROR, "请选择要上传的图片");
         PhotoDetailVO photo = photoService.upload(
-                file, userId, longitude, latitude, locationName, photoDate, description, district);
+                file, userId, longitude, latitude, locationName, photoDate, description, district, visibility);
         return Result.success(photo);
     }
 
@@ -50,9 +51,10 @@ public class PhotoController {
             @RequestParam("longitude") double longitude,
             @RequestParam(value = "radius", defaultValue = "10") double radius,
             @RequestParam(value = "startDate", required = false) String startDate,
-            @RequestParam(value = "endDate", required = false) String endDate) {
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestAttribute(value = "userId", required = false) Long userId) {
         List<NearbyPhotoVO> list = photoService.findNearby(
-                latitude, longitude, radius, startDate, endDate);
+                latitude, longitude, radius, startDate, endDate, userId);
         return Result.success(list);
     }
 
@@ -60,11 +62,15 @@ public class PhotoController {
     public Result<PhotoDetailVO> detail(
             @PathVariable Long id,
             @RequestAttribute(value = "userId", required = false) Long userId) {
-        log.info("[PhotoController] detail 请求: photoId={}, userId={}", id, userId);
         PhotoDetailVO photo = photoService.getDetail(id, userId);
-        ThrowUtils.throwIf(photo == null, ErrorCode.PHOTO_NOT_FOUND);
-        log.info("[PhotoController] detail 响应: photoId={}, liked={}, likeCount={}",
-                id, photo.getLiked(), photo.getLikeCount());
+        if (photo == null) {
+            // 区分"不存在"和"无权查看"：检查照片是否存在（不做可见性过滤）
+            boolean exists = photoService.existsById(id);
+            if (exists) {
+                return Result.error(ErrorCode.FORBIDDEN_ERROR.getCode(), "该照片不可见");
+            }
+            ThrowUtils.throwIf(true, ErrorCode.PHOTO_NOT_FOUND);
+        }
         return Result.success(photo);
     }
 
@@ -80,9 +86,7 @@ public class PhotoController {
     public Result<List<PhotoDetailVO>> batch(
             @RequestParam("ids") String ids,
             @RequestAttribute(value = "userId", required = false) Long userId) {
-        log.info("[PhotoController] batch 请求: ids={}, userId={}", ids, userId);
         List<PhotoDetailVO> list = photoService.getBatchDetail(ids, userId);
-        log.info("[PhotoController] batch 响应: 返回 {} 张照片", list.size());
         return Result.success(list);
     }
 
@@ -91,8 +95,9 @@ public class PhotoController {
             @RequestParam("district") String district,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "20") int size,
-            @RequestParam(value = "sortBy", defaultValue = "photoDate") String sortBy) {
-        CommunityPageVO data = photoService.findCommunity(district, page, size, sortBy);
+            @RequestParam(value = "sortBy", defaultValue = "photoDate") String sortBy,
+            @RequestAttribute(value = "userId", required = false) Long userId) {
+        CommunityPageVO data = photoService.findCommunity(district, page, size, sortBy, userId);
         return Result.success(data);
     }
 
@@ -111,7 +116,7 @@ public class PhotoController {
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         Map<String, Object> photos = photoService.getMyPhotos(userId, page, size);
-        UserProfileVO profile = photoService.getUserProfile(userId);
+        UserProfileVO profile = photoService.getUserProfile(userId, userId);
         Map<String, Object> result = new HashMap<>(photos);
         result.put("user", profile);
         return Result.success(result);
@@ -123,6 +128,15 @@ public class PhotoController {
             @RequestParam("photoDate") String photoDate,
             @RequestAttribute("userId") Long userId) {
         photoService.updatePhotoDate(photoId, userId, photoDate);
+        return Result.success();
+    }
+
+    @PostMapping("/updateVisibility")
+    public Result<Void> updateVisibility(
+            @RequestParam("photoId") Long photoId,
+            @RequestParam("visibility") Integer visibility,
+            @RequestAttribute("userId") Long userId) {
+        photoService.updateVisibility(photoId, userId, visibility);
         return Result.success();
     }
 
@@ -142,15 +156,26 @@ public class PhotoController {
         return Result.success(data);
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping("/user/{targetUserId}")
     public Result<Map<String, Object>> userPhotos(
-            @PathVariable Long userId,
+            @PathVariable Long targetUserId,
+            @RequestAttribute(value = "userId", required = false) Long userId,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
-        Map<String, Object> photos = photoService.getMyPhotos(userId, page, size);
-        UserProfileVO profile = photoService.getUserProfile(userId);
+        Map<String, Object> photos = photoService.getUserPhotos(targetUserId, userId, page, size);
+        UserProfileVO profile = photoService.getUserProfile(targetUserId, userId);
         Map<String, Object> result = new HashMap<>(photos);
         result.put("user", profile);
         return Result.success(result);
+    }
+
+    @GetMapping("/footprint")
+    public Result<com.maptrace.model.vo.FootprintVO> footprint(
+            @RequestParam(value = "targetUserId", required = false) Long targetUserId,
+            @RequestAttribute(value = "userId", required = false) Long userId) {
+        Long queryUserId = targetUserId != null ? targetUserId : userId;
+        ThrowUtils.throwIf(queryUserId == null, ErrorCode.PARAMS_ERROR, "用户ID不能为空");
+        com.maptrace.model.vo.FootprintVO data = photoService.getFootprint(queryUserId, userId);
+        return Result.success(data);
     }
 }

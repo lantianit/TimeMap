@@ -52,10 +52,10 @@
   <!-- ========== 状态2+3：已登录（正常页面 + 弹窗引导） ========== -->
   <view wx:else>
     <view class="user-card">
-      <image class="avatar" src="{{userInfo.avatarUrl || '/images/icon-user.svg'}}" mode="aspectFill" />
+      <image class="avatar" src="{{userInfo.avatarUrl || '/images/icon-user.svg'}}" mode="aspectFill" bindtap="onEditProfile" />
       <view class="user-main">
         <view class="user-info">
-          <text class="nickname">{{userInfo.nickname || '微信用户'}}</text>
+          <text class="nickname" bindtap="onEditProfile">{{userInfo.nickname || '微信用户'}}</text>
           <text class="user-summary" wx:if="{{userInfo.photoCount > 0}}">
             已上传 {{userInfo.photoCount || 0}} 张照片，足迹覆盖 {{userInfo.areaCount || 0}} 个区域
           </text>
@@ -74,18 +74,29 @@
             <text class="summary-value">{{userInfo.likeCount || 0}}</text>
             <text class="summary-label">获赞</text>
           </view>
+          <view class="summary-item" bindtap="onGoFollowList">
+            <text class="summary-value">{{followCount.mutualCount || 0}}</text>
+            <text class="summary-label">互关</text>
+          </view>
         </view>
         <view class="recent-row" wx:if="{{userInfo.latestPhotoDate}}">
           <text class="recent-tag">最近记录</text>
           <text class="recent-date">{{userInfo.latestPhotoDate}}</text>
         </view>
       </view>
+      <!-- 更多菜单按钮 -->
+      <view class="more-btn" bindtap="onToggleMenu">
+        <view class="more-line"></view>
+        <view class="more-line"></view>
+        <view class="more-line"></view>
+      </view>
     </view>
 
-    <view class="menu-list">
-      <view class="menu-item" bindtap="onEditProfile">
-        <text class="menu-icon">✏️</text>
-        <text class="menu-text">编辑资料</text>
+    <!-- 菜单列表（可折叠） -->
+    <view class="menu-list" wx:if="{{showMenu}}">
+      <view class="menu-item" bindtap="onGoFollowList">
+        <text class="menu-icon">👥</text>
+        <text class="menu-text">我的关注</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" bindtap="onGoMessages">
@@ -120,7 +131,10 @@
     <view class="area-card" wx:if="{{topAreas.length}}">
       <view class="section-head">
         <text class="section-title">足迹亮点</text>
-        <text class="section-subtitle">按上传区域统计</text>
+        <view class="section-more" bindtap="onFootprintTap">
+          <text class="section-subtitle">查看全部</text>
+          <text class="section-arrow-sm">▸</text>
+        </view>
       </view>
       <view class="area-list">
         <view class="area-item" wx:for="{{topAreas}}" wx:key="name">
@@ -148,8 +162,14 @@
           <view class="photo-bottom">
             <text class="photo-date">{{item.photoDateLabel}}</text>
             <view class="photo-stats">
-              <text wx:if="{{item.likeCount > 0}}">♥ {{item.likeCount}}</text>
-              <text wx:if="{{item.commentCount > 0}}">💬 {{item.commentCount}}</text>
+              <view class="stat-item" wx:if="{{item.likeCount > 0}}">
+                <text class="stat-icon like-icon">♥</text>
+                <text class="stat-num">{{item.likeCount}}</text>
+              </view>
+              <view class="stat-item" wx:if="{{item.commentCount > 0}}">
+                <text class="stat-icon comment-icon">💬</text>
+                <text class="stat-num">{{item.commentCount}}</text>
+              </view>
             </view>
           </view>
         </view>

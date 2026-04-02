@@ -22,4 +22,5 @@ public class PhotoDetailVO {
     private String avatarUrl;
     private Integer likeCount;
     private Boolean liked;
+    private Integer visibility;
 }

@@ -60,6 +60,15 @@
       <text class="info-label">描述</text>
       <text class="info-value desc-value">{{photo.description}}</text>
     </view>
+    <view class="info-row" wx:if="{{photo.isOwner}}">
+      <text class="info-label">可见性</text>
+      <view class="info-value-wrap">
+        <text class="info-value visibility-value" bindtap="onVisibilityTap">
+          {{photo.visibility === 0 ? '🔒 仅自己' : photo.visibility === 1 ? '👥 互关可见' : '🌍 所有人'}}
+        </text>
+        <text class="date-edit-icon" bindtap="onVisibilityTap">✎</text>
+      </view>
+    </view>
   </view>
 
   <!-- 评论区 -->

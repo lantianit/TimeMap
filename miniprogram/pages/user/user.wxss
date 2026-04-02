@@ -75,6 +75,11 @@
 }
 .section-title { font-size: 30rpx; font-weight: bold; color: #333; }
 .section-subtitle { font-size: 22rpx; color: #999; }
+.section-more {
+  display: flex; align-items: center; gap: 4rpx;
+}
+.section-more .section-subtitle { color: #07c160; }
+.section-arrow-sm { font-size: 22rpx; color: #07c160; }
 
 .area-card {
   margin: 0 24rpx 16rpx;
@@ -136,11 +141,30 @@
 .empty-tip { text-align: center; color: #ccc; font-size: 28rpx; padding: 80rpx 0; }
 .loading-tip { text-align: center; color: #bbb; font-size: 24rpx; padding: 30rpx 0; }
 
-/* 发私信按钮 */
-.msg-btn-wrap {
+/* 关注 + 私信按钮 */
+.action-btn-wrap {
   padding: 0 24rpx 16rpx;
+  display: flex; gap: 16rpx;
+}
+.follow-btn {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  height: 80rpx;
+  background: #07c160; color: #fff;
+  border-radius: 40rpx;
+  font-size: 28rpx; font-weight: 500;
+}
+.follow-btn:active { opacity: 0.8; }
+.follow-btn.following {
+  background: #fff; color: #999;
+  border: 2rpx solid #e0e0e0;
+}
+.follow-btn.mutual {
+  background: #f0f9f0; color: #07c160;
+  border: 2rpx solid #07c160;
 }
 .msg-btn {
+  width: 160rpx;
   display: flex;
   align-items: center;
   justify-content: center;

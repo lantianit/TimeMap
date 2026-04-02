@@ -62,8 +62,8 @@ function filterSupportedImages(tempFiles) {
 
 Page({
   data: {
-    latitude: 30.5554,
-    longitude: 114.3162,
+    latitude: 39.9042,
+    longitude: 116.3974,
     markers: [],
     photoMarkers: [],
     scale: 14,
@@ -121,6 +121,8 @@ Page({
     areaFilterUsers: 0,
     // 未读消息
     unreadTotal: 0,
+    // 可见性选择（0=仅自己, 1=互关可见, 2=所有人）
+    uploadVisibility: 2,
     // 拖拽状态（已移除）
   },
 
@@ -143,7 +145,9 @@ Page({
     if (options && options.focusLat && options.focusLng) {
       const lat = parseFloat(options.focusLat);
       const lng = parseFloat(options.focusLng);
-      const image = options.focusImage ? decodeURIComponent(options.focusImage) : '';
+      const rawImage = options.focusImage ? decodeURIComponent(options.focusImage) : '';
+      // 确保使用缩略图 URL，避免加载全尺寸图片导致白屏
+      const image = buildThumbUrl(rawImage, rawImage);
       this.setData({
         latitude: lat, longitude: lng,
         scale: 16,
@@ -592,15 +596,24 @@ Page({
         this._historyMarkers = [];
         const photoMarkers = [];
 
-        // 聚焦模式下，计算聚焦点的聚合 key，用于过滤重叠标记
-        let focusKey = null;
-        if (this.data.showFocusMarker && this._focusLat && this._focusLng) {
-          focusKey = this._focusLat.toFixed(precision) + ',' + this._focusLng.toFixed(precision);
-        }
+        // 聚焦模式下，用距离判断过滤与聚焦点重叠的聚合组（避免 toFixed 精度不匹配导致重复标记）
+        const hasFocus = this.data.showFocusMarker && this._focusLat && this._focusLng;
 
         Object.keys(groups).forEach((key) => {
-          // 跳过与聚焦标记重叠的聚合组
-          if (focusKey && key === focusKey) return;
+          // 跳过与聚焦标记重叠的聚合组：距离 < 50 米视为同一位置
+          if (hasFocus) {
+            const parts = key.split(',');
+            const gLat = parseFloat(parts[0]);
+            const gLng = parseFloat(parts[1]);
+            const dLat = gLat - this._focusLat;
+            const dLng = gLng - this._focusLng;
+            // 简易距离估算（米），纬度 1° ≈ 111km，经度按 cos 修正
+            const distM = Math.sqrt(
+              Math.pow(dLat * 111000, 2) +
+              Math.pow(dLng * 111000 * Math.cos(this._focusLat * Math.PI / 180), 2)
+            );
+            if (distM < 50) return;
+          }
 
           const group = groups[key];
           const first = group[0];
@@ -742,7 +755,8 @@ Page({
       tapLocationName: '',
       selectedImages: [],
       uploadDesc: '',
-      uploadDescLength: 0
+      uploadDescLength: 0,
+      uploadVisibility: 2
     });
     this._rebuildMarkers();
   },
@@ -844,6 +858,11 @@ Page({
     this.setData({ uploadDesc: val, uploadDescLength: val.length });
   },
 
+  onVisibilityTap(e) {
+    const v = parseInt(e.currentTarget.dataset.v);
+    this.setData({ uploadVisibility: v });
+  },
+
   /** 支持的图片格式（与后端一致），用于选择后过滤 */
   _ALLOWED_EXT: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'],
 
@@ -873,7 +892,7 @@ Page({
     wx.chooseMedia({
       count: remaining,
       mediaType: ['image'],
-      sizeType: ['compressed'],
+      sizeType: ['original'],
       success: (res) => {
         const newImages = this._filterSupportedImages(res.tempFiles);
         if (!newImages.length) return;
@@ -892,7 +911,7 @@ Page({
       count: 1,
       mediaType: ['image'],
       sourceType: ['camera'],
-      sizeType: ['compressed'],
+      sizeType: ['original'],
       success: (res) => {
         const newImages = this._filterSupportedImages(res.tempFiles);
         if (!newImages.length) return;
@@ -951,7 +970,8 @@ Page({
           tapLocationName: '',
           selectedImages: [],
           uploadDesc: '',
-          uploadDescLength: 0
+          uploadDescLength: 0,
+          uploadVisibility: 2
         });
         this._rebuildMarkers();
         // 恢复照片显示并刷新
@@ -968,7 +988,8 @@ Page({
       uploadFile('/photo/upload', selectedImages[idx], {
         longitude: String(tapLng), latitude: String(tapLat),
         photoDate: uploadDate, locationName: tapLocationName || '',
-        district: this._tapDistrict || '', description: this.data.uploadDesc || ''
+        district: this._tapDistrict || '', description: this.data.uploadDesc || '',
+        visibility: String(this.data.uploadVisibility)
       })
         .catch(() => { failed++; })
         .finally(() => { uploadNext(idx + 1); });

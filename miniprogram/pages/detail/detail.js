@@ -171,6 +171,8 @@ Page({
     const content = this.data.inputValue.trim();
     if (!content) return;
     if (!checkLogin()) return;
+    if (this._sendingComment) return;
+    this._sendingComment = true;
 
     const body = {
       photoId: this._photoId,
@@ -215,6 +217,7 @@ Page({
     }
 
     request('/comment/add', 'POST', body).then(res => {
+      this._sendingComment = false;
       if (body.parentId === 0) {
         const real = this._formatComment(res.data);
         const comments = this.data.comments.map(c => c.id === optimistic.id ? real : c);
@@ -230,6 +233,7 @@ Page({
         this.setData({ comments });
       }
     }).catch(() => {
+      this._sendingComment = false;
       if (body.parentId === 0) {
         const comments = this.data.comments.filter(c => c.id !== optimistic.id);
         this.setData({ comments, commentTotal: this.data.commentTotal - 1 });
@@ -441,11 +445,40 @@ Page({
   onLocateOnMap() {
     const p = this.data.photo;
     if (!p.latitude || !p.longitude) return;
+    // 使用缩略图参数，避免加载全尺寸图片导致白屏
+    let thumb = p.thumbnailUrl || p.imageUrl || '';
+    if (thumb && thumb.includes('.cos.')) {
+      const sep = thumb.includes('?') ? '&' : '?';
+      thumb = thumb + sep + 'imageMogr2/thumbnail/216x200';
+    }
     wx.navigateTo({
       url: '/pages/map/map?focusLat=' + p.latitude +
         '&focusLng=' + p.longitude +
-        '&focusImage=' + encodeURIComponent(p.thumbnailUrl || p.imageUrl) +
+        '&focusImage=' + encodeURIComponent(thumb) +
         '&focusName=' + encodeURIComponent(p.locationName || '')
+    });
+  },
+
+  onVisibilityTap() {
+    if (!this.data.photo.isOwner) return;
+    wx.showActionSheet({
+      itemList: ['🔒 仅自己可见', '👥 互关可见', '🌍 所有人可见'],
+      success: (res) => {
+        const visibility = res.tapIndex;
+        if (visibility === this.data.photo.visibility) return;
+        const currentIdx = this.data.current;
+        request('/photo/updateVisibility?photoId=' + this._photoId + '&visibility=' + visibility, 'POST')
+          .then(() => {
+            this.setData({
+              'photo.visibility': visibility,
+              [`photos[${currentIdx}].visibility`]: visibility
+            });
+            wx.showToast({ title: '已修改', icon: 'success' });
+          })
+          .catch(() => {
+            wx.showToast({ title: '修改失败', icon: 'none' });
+          });
+      }
     });
   },
 

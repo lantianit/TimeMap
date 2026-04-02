@@ -8,6 +8,8 @@ import lombok.Data;
 public class NearbyPhotoVO {
     @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long userId;
     private String imageUrl;
     private String thumbnailUrl;
     private Double longitude;
@@ -17,4 +19,5 @@ public class NearbyPhotoVO {
     private Double distance;
     private Integer commentCount;
     private Integer likeCount;
+    private Integer visibility;
 }

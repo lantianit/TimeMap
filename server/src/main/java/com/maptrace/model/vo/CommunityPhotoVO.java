@@ -21,4 +21,5 @@ public class CommunityPhotoVO {
     private String avatarUrl;
     private Integer commentCount;
     private Integer likeCount;
+    private Integer visibility;
 }

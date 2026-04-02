@@ -51,6 +51,9 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/photo/community",
                         "/api/photo/stats",
                         "/api/photo/user/**",
+                        "/api/photo/district-ranking",
+                        "/api/photo/footprint",
+                        "/api/follow/count",
                         "/api/comment/list",
                         "/api/comment/replies"
                 )
@@ -69,6 +72,9 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/photo/community",
                         "/api/photo/stats",
                         "/api/photo/user/**",
+                        "/api/photo/district-ranking",
+                        "/api/photo/footprint",
+                        "/api/follow/count",
                         "/api/comment/list",
                         "/api/comment/replies",
                         "/ws/**",

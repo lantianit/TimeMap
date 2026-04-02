@@ -1,0 +1,70 @@
+<view class="container">
+  <!-- 加载状态 -->
+  <view class="loading-overlay" wx:if="{{loading}}">
+    <text class="loading-text">加载足迹中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{empty && !loading}}">
+    <text class="empty-text">{{isSelf ? '你还没有足迹记录' : 'TA 还没有公开的足迹记录'}}</text>
+    <view class="empty-btn" wx:if="{{isSelf}}" bindtap="onBack">去上传第一张照片</view>
+  </view>
+
+  <!-- 超过500条提示 -->
+  <view class="limit-tip" wx:if="{{showLimitTip}}">
+    <text>仅展示最近 500 张照片的足迹</text>
+  </view>
+
+  <!-- 顶部信息胶囊 -->
+  <view class="info-bar" wx:if="{{infoBarText}}">
+    <text class="info-bar-text">{{infoBarText}}</text>
+  </view>
+
+  <!-- 右上角重置按钮 -->
+  <view class="reset-btn" wx:if="{{showResetBtn}}" bindtap="onResetView">
+    <text class="reset-icon">↻</text>
+  </view>
+
+  <!-- 地图 -->
+  <map
+    id="footprint-map"
+    class="map"
+    latitude="{{latitude}}"
+    longitude="{{longitude}}"
+    scale="{{scale}}"
+    markers="{{markers}}"
+    show-location
+    bindmarkertap="onMarkerTap"
+    bindcallouttap="onMarkerTap"
+    bindregionchange="onRegionChange"
+  >
+    <!-- 城市气泡 -->
+    <block wx:if="{{markerLevel === 'city'}}">
+      <block wx:for="{{cityBubbles}}" wx:key="id">
+        <cover-view slot="callout" marker-id="{{item.id}}">
+          <cover-view class="city-bubble {{item.sizeClass}}">
+            <cover-view class="bubble-count">{{item.count}}</cover-view>
+            <cover-view class="bubble-name">{{item.name}}</cover-view>
+          </cover-view>
+        </cover-view>
+      </block>
+    </block>
+
+    <!-- 照片缩略图标记 -->
+    <block wx:if="{{markerLevel === 'photo'}}">
+      <block wx:for="{{photoCallouts}}" wx:key="id">
+        <cover-view slot="callout" marker-id="{{item.id}}">
+          <cover-view class="photo-callout">
+            <cover-view class="photo-card">
+              <cover-image class="photo-thumb" src="{{item.thumbUrl}}" />
+              <cover-view class="photo-count" wx:if="{{item.count > 1}}">{{item.count > 99 ? '99+' : item.count}}</cover-view>
+            </cover-view>
+            <cover-view class="photo-arrow-wrap">
+              <cover-view class="photo-arrow"></cover-view>
+            </cover-view>
+          </cover-view>
+        </cover-view>
+      </block>
+    </block>
+  </map>
+</view>

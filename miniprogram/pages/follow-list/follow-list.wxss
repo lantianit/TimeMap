@@ -1,0 +1,72 @@
+.page { min-height: 100vh; background: #f5f5f5; }
+
+.tabs {
+  display: flex; background: #fff;
+  border-bottom: 1rpx solid #f0f0f0;
+  position: sticky; top: 0; z-index: 10;
+}
+.tab {
+  flex: 1; text-align: center;
+  height: 88rpx; line-height: 88rpx;
+  font-size: 28rpx; color: #999;
+  position: relative;
+}
+.tab.active {
+  color: #07c160; font-weight: 600;
+}
+.tab.active::after {
+  content: ''; position: absolute;
+  bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 48rpx; height: 4rpx;
+  background: #07c160; border-radius: 2rpx;
+}
+
+.list { padding: 16rpx 0; }
+.item {
+  display: flex; align-items: center;
+  padding: 20rpx 30rpx;
+  background: #fff;
+  margin-bottom: 2rpx;
+}
+.avatar {
+  width: 88rpx; height: 88rpx;
+  border-radius: 50%; background: #e0e0e0;
+  flex-shrink: 0; margin-right: 20rpx;
+}
+.info { flex: 1; min-width: 0; }
+.nick {
+  font-size: 28rpx; color: #333; font-weight: 500;
+  display: block;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mutual-tag {
+  font-size: 20rpx; color: #07c160;
+  background: rgba(7,193,96,0.1);
+  padding: 4rpx 12rpx; border-radius: 999rpx;
+  display: inline-block; margin-top: 6rpx;
+}
+
+.follow-btn {
+  flex-shrink: 0;
+  min-width: 120rpx; height: 56rpx; line-height: 56rpx;
+  text-align: center; font-size: 24rpx;
+  background: #07c160; color: #fff;
+  border-radius: 28rpx; padding: 0 20rpx;
+}
+.follow-btn:active { opacity: 0.8; }
+.follow-btn.following {
+  background: #f5f5f5; color: #999;
+}
+.follow-btn.mutual {
+  background: #f0f9f0; color: #07c160;
+  border: 1rpx solid #07c160;
+}
+
+.empty {
+  text-align: center; color: #ccc;
+  font-size: 28rpx; padding: 120rpx 0;
+}
+.loading-tip {
+  text-align: center; color: #bbb;
+  font-size: 24rpx; padding: 30rpx 0;
+}

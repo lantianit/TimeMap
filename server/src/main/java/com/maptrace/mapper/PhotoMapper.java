@@ -2,6 +2,7 @@ package com.maptrace.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.maptrace.model.vo.CommunityPhotoVO;
+import com.maptrace.model.vo.DashboardStatsVO;
 import com.maptrace.model.vo.DistrictRankVO;
 import com.maptrace.model.vo.MyPhotoVO;
 import com.maptrace.model.vo.NearbyPhotoVO;
@@ -22,8 +23,8 @@ public interface PhotoMapper extends BaseMapper<Photo> {
 
     @Select("""
         <script>
-        SELECT id, image_url, thumbnail_url, longitude, latitude,
-               location_name, photo_date,
+        SELECT id, user_id, image_url, thumbnail_url, longitude, latitude,
+               location_name, photo_date, visibility,
                (SELECT COUNT(*) FROM t_comment WHERE photo_id = t_photo.id AND deleted = 0) AS comment_count,
                (SELECT COUNT(*) FROM t_photo_like WHERE photo_id = t_photo.id) AS like_count,
                (6371 * 2 * ASIN(SQRT(
@@ -41,27 +42,62 @@ public interface PhotoMapper extends BaseMapper<Photo> {
           <if test="endDate != null and endDate != ''">
             AND photo_date &lt;= #{endDate}
           </if>
+          <choose>
+            <when test="viewerUserId != null">
+              AND (
+                visibility = 2
+                OR user_id = #{viewerUserId}
+                <if test="mutualUserIds != null and mutualUserIds.size() > 0">
+                  OR (visibility = 1 AND user_id IN
+                    <foreach item="mid" collection="mutualUserIds" open="(" separator="," close=")">#{mid}</foreach>
+                  )
+                </if>
+              )
+            </when>
+            <otherwise>
+              AND visibility = 2
+            </otherwise>
+          </choose>
         HAVING distance &lt;= #{radiusKm}
         ORDER BY distance
         LIMIT 200
         </script>
     """)
     List<NearbyPhotoVO> findNearby(@Param("lat") double lat,
-                                          @Param("lng") double lng,
-                                          @Param("radiusKm") double radiusKm,
-                                          @Param("startDate") String startDate,
-                                          @Param("endDate") String endDate);
+                                   @Param("lng") double lng,
+                                   @Param("radiusKm") double radiusKm,
+                                   @Param("startDate") String startDate,
+                                   @Param("endDate") String endDate,
+                                   @Param("viewerUserId") Long viewerUserId,
+                                   @Param("mutualUserIds") List<Long> mutualUserIds);
 
     @Select("""
         <script>
         SELECT p.id, p.user_id, p.image_url, p.thumbnail_url, p.longitude, p.latitude,
-               p.location_name, p.photo_date, p.create_time, u.nickname, u.avatar_url,
+               p.location_name, p.photo_date, p.create_time, p.visibility,
+               u.nickname, u.avatar_url,
                (SELECT COUNT(*) FROM t_comment c WHERE c.photo_id = p.id AND c.deleted = 0) AS comment_count,
                (SELECT COUNT(*) FROM t_photo_like pl WHERE pl.photo_id = p.id) AS like_count
         FROM t_photo p
         LEFT JOIN t_user u ON p.user_id = u.id
         WHERE p.deleted = 0
           AND p.district = #{district}
+          <choose>
+            <when test="viewerUserId != null">
+              AND (
+                p.visibility = 2
+                OR p.user_id = #{viewerUserId}
+                <if test="mutualUserIds != null and mutualUserIds.size() > 0">
+                  OR (p.visibility = 1 AND p.user_id IN
+                    <foreach item="mid" collection="mutualUserIds" open="(" separator="," close=")">#{mid}</foreach>
+                  )
+                </if>
+              )
+            </when>
+            <otherwise>
+              AND p.visibility = 2
+            </otherwise>
+          </choose>
         <if test="sortBy == 'createTime'">
         ORDER BY p.create_time DESC, p.id DESC
         </if>
@@ -78,61 +114,51 @@ public interface PhotoMapper extends BaseMapper<Photo> {
         </script>
     """)
     List<CommunityPhotoVO> findCommunity(@Param("offset") int offset,
-                                                @Param("size") int size,
-                                                @Param("sortBy") String sortBy,
-                                                @Param("district") String district);
-
-    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND district = #{district}")
-    long countCommunity(@Param("district") String district);
-
-    @Select("""
-        <script>
-        SELECT COUNT(*) FROM t_photo
-        WHERE deleted = 0
-          AND latitude  BETWEEN #{lat} - (#{radiusKm} / 111.0) AND #{lat} + (#{radiusKm} / 111.0)
-          AND longitude BETWEEN #{lng} - (#{radiusKm} / (111.0 * COS(RADIANS(#{lat})))) AND #{lng} + (#{radiusKm} / (111.0 * COS(RADIANS(#{lat}))))
-          AND (6371 * 2 * ASIN(SQRT(
-                   POW(SIN(RADIANS(latitude - #{lat}) / 2), 2) +
-                   COS(RADIANS(#{lat})) * COS(RADIANS(latitude)) *
-                   POW(SIN(RADIANS(longitude - #{lng}) / 2), 2)
-               ))) &lt;= #{radiusKm}
-        </script>
-    """)
-    long countNearby(@Param("lat") double lat,
-                     @Param("lng") double lng,
-                     @Param("radiusKm") double radiusKm);
-
-    @Select("""
-        <script>
-        SELECT COUNT(*) FROM t_photo
-        WHERE deleted = 0
-          AND DATE(create_time) = CURDATE()
-          AND latitude  BETWEEN #{lat} - (#{radiusKm} / 111.0) AND #{lat} + (#{radiusKm} / 111.0)
-          AND longitude BETWEEN #{lng} - (#{radiusKm} / (111.0 * COS(RADIANS(#{lat})))) AND #{lng} + (#{radiusKm} / (111.0 * COS(RADIANS(#{lat}))))
-          AND (6371 * 2 * ASIN(SQRT(
-                   POW(SIN(RADIANS(latitude - #{lat}) / 2), 2) +
-                   COS(RADIANS(#{lat})) * COS(RADIANS(latitude)) *
-                   POW(SIN(RADIANS(longitude - #{lng}) / 2), 2)
-               ))) &lt;= #{radiusKm}
-        </script>
-    """)
-    long countToday(@Param("lat") double lat,
-                    @Param("lng") double lng,
-                    @Param("radiusKm") double radiusKm);
-
-    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND district = #{district}")
-    long countByDistrict(@Param("district") String district);
-
-    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND district = #{district} AND DATE(create_time) = CURDATE()")
-    long countTodayByDistrict(@Param("district") String district);
-
-    @Select("SELECT COUNT(DISTINCT user_id) FROM t_photo WHERE deleted = 0 AND district = #{district} AND DATE(create_time) = CURDATE()")
-    long countTodayUsersByDistrict(@Param("district") String district);
+                                         @Param("size") int size,
+                                         @Param("sortBy") String sortBy,
+                                         @Param("district") String district,
+                                         @Param("viewerUserId") Long viewerUserId,
+                                         @Param("mutualUserIds") List<Long> mutualUserIds);
 
     @Select("""
         <script>
         SELECT COUNT(*) FROM t_photo
         WHERE deleted = 0 AND district = #{district}
+          <choose>
+            <when test="viewerUserId != null">
+              AND (
+                visibility = 2
+                OR user_id = #{viewerUserId}
+                <if test="mutualUserIds != null and mutualUserIds.size() > 0">
+                  OR (visibility = 1 AND user_id IN
+                    <foreach item="mid" collection="mutualUserIds" open="(" separator="," close=")">#{mid}</foreach>
+                  )
+                </if>
+              )
+            </when>
+            <otherwise>
+              AND visibility = 2
+            </otherwise>
+          </choose>
+        </script>
+    """)
+    long countCommunity(@Param("district") String district,
+                        @Param("viewerUserId") Long viewerUserId,
+                        @Param("mutualUserIds") List<Long> mutualUserIds);
+
+    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND visibility = 2 AND district = #{district}")
+    long countByDistrict(@Param("district") String district);
+
+    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND visibility = 2 AND district = #{district} AND DATE(create_time) = CURDATE()")
+    long countTodayByDistrict(@Param("district") String district);
+
+    @Select("SELECT COUNT(DISTINCT user_id) FROM t_photo WHERE deleted = 0 AND visibility = 2 AND district = #{district} AND DATE(create_time) = CURDATE()")
+    long countTodayUsersByDistrict(@Param("district") String district);
+
+    @Select("""
+        <script>
+        SELECT COUNT(*) FROM t_photo
+        WHERE deleted = 0 AND visibility = 2 AND district = #{district}
           <if test="startDate != null and startDate != ''">
             AND photo_date &gt;= #{startDate}
           </if>
@@ -148,7 +174,7 @@ public interface PhotoMapper extends BaseMapper<Photo> {
     @Select("""
         <script>
         SELECT COUNT(DISTINCT user_id) FROM t_photo
-        WHERE deleted = 0 AND district = #{district}
+        WHERE deleted = 0 AND visibility = 2 AND district = #{district}
           <if test="startDate != null and startDate != ''">
             AND photo_date &gt;= #{startDate}
           </if>
@@ -162,7 +188,7 @@ public interface PhotoMapper extends BaseMapper<Photo> {
                                      @Param("endDate") String endDate);
 
     @Select("""
-        SELECT p.id, p.image_url, p.thumbnail_url, p.location_name, p.photo_date, p.create_time,
+        SELECT p.id, p.image_url, p.thumbnail_url, p.location_name, p.photo_date, p.create_time, p.visibility,
                (SELECT COUNT(*) FROM t_comment c WHERE c.photo_id = p.id AND c.deleted = 0) AS comment_count,
                (SELECT COUNT(*) FROM t_photo_like pl WHERE pl.photo_id = p.id) AS like_count
         FROM t_photo p
@@ -171,29 +197,104 @@ public interface PhotoMapper extends BaseMapper<Photo> {
         LIMIT #{offset}, #{size}
     """)
     List<MyPhotoVO> findMyPhotos(@Param("userId") Long userId,
-                                       @Param("offset") int offset,
-                                       @Param("size") int size);
+                                 @Param("offset") int offset,
+                                 @Param("size") int size);
 
     @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND user_id = #{userId}")
     long countMyPhotos(@Param("userId") Long userId);
 
+    @Select("SELECT IFNULL(SUM(sub.cnt), 0) FROM (SELECT (SELECT COUNT(*) FROM t_photo_like WHERE photo_id = p.id) AS cnt FROM t_photo p WHERE p.deleted = 0 AND p.user_id = #{userId}) sub")
+    long countUserTotalLikes(@Param("userId") Long userId);
+
+    /** 查看他人主页照片（带可见性过滤） */
     @Select("""
+        <script>
+        SELECT p.id, p.image_url, p.thumbnail_url, p.location_name, p.photo_date, p.create_time, p.visibility,
+               (SELECT COUNT(*) FROM t_comment c WHERE c.photo_id = p.id AND c.deleted = 0) AS comment_count,
+               (SELECT COUNT(*) FROM t_photo_like pl WHERE pl.photo_id = p.id) AS like_count
+        FROM t_photo p
+        WHERE p.deleted = 0 AND p.user_id = #{targetUserId}
+          <choose>
+            <when test="viewerUserId != null and viewerUserId == targetUserId">
+              <!-- 查看自己的照片：全部可见 -->
+            </when>
+            <when test="isMutual">
+              AND p.visibility IN (1, 2)
+            </when>
+            <otherwise>
+              AND p.visibility = 2
+            </otherwise>
+          </choose>
+        ORDER BY p.create_time DESC
+        LIMIT #{offset}, #{size}
+        </script>
+    """)
+    List<MyPhotoVO> findUserPhotos(@Param("targetUserId") Long targetUserId,
+                                   @Param("viewerUserId") Long viewerUserId,
+                                   @Param("isMutual") boolean isMutual,
+                                   @Param("offset") int offset,
+                                   @Param("size") int size);
+
+    /** 查看他人主页照片计数（带可见性过滤） */
+    @Select("""
+        <script>
+        SELECT COUNT(*) FROM t_photo
+        WHERE deleted = 0 AND user_id = #{targetUserId}
+          <choose>
+            <when test="viewerUserId != null and viewerUserId == targetUserId">
+              <!-- 查看自己的照片：全部可见 -->
+            </when>
+            <when test="isMutual">
+              AND visibility IN (1, 2)
+            </when>
+            <otherwise>
+              AND visibility = 2
+            </otherwise>
+          </choose>
+        </script>
+    """)
+    long countUserPhotos(@Param("targetUserId") Long targetUserId,
+                         @Param("viewerUserId") Long viewerUserId,
+                         @Param("isMutual") boolean isMutual);
+
+    @Select("""
+        <script>
         SELECT COUNT(DISTINCT district)
         FROM t_photo
         WHERE deleted = 0 AND user_id = #{userId}
           AND district IS NOT NULL AND district != ''
+          <if test="!isSelf and isMutual">
+            AND visibility IN (1, 2)
+          </if>
+          <if test="!isSelf and !isMutual">
+            AND visibility = 2
+          </if>
+        </script>
     """)
-    long countUserAreas(@Param("userId") Long userId);
+    long countUserAreasFiltered(@Param("userId") Long userId,
+                                @Param("isSelf") boolean isSelf,
+                                @Param("isMutual") boolean isMutual);
 
     @Select("""
+        <script>
         SELECT IFNULL(SUM(sub.cnt), 0) FROM (
             SELECT (SELECT COUNT(*) FROM t_photo_like WHERE photo_id = p.id) AS cnt
             FROM t_photo p WHERE p.deleted = 0 AND p.user_id = #{userId}
+            <if test="!isSelf and isMutual">
+              AND p.visibility IN (1, 2)
+            </if>
+            <if test="!isSelf and !isMutual">
+              AND p.visibility = 2
+            </if>
         ) sub
+        </script>
     """)
-    long countUserTotalLikes(@Param("userId") Long userId);
+    long countUserTotalLikesFiltered(@Param("userId") Long userId,
+                                     @Param("isSelf") boolean isSelf,
+                                     @Param("isMutual") boolean isMutual);
 
     @Select("""
+        <script>
         SELECT
           CASE
             WHEN district IS NULL OR district = '' THEN '未标注区域'
@@ -202,15 +303,40 @@ public interface PhotoMapper extends BaseMapper<Photo> {
           COUNT(*) AS count
         FROM t_photo
         WHERE deleted = 0 AND user_id = #{userId}
+          <if test="!isSelf and isMutual">
+            AND visibility IN (1, 2)
+          </if>
+          <if test="!isSelf and !isMutual">
+            AND visibility = 2
+          </if>
         GROUP BY CASE
           WHEN district IS NULL OR district = '' THEN '未标注区域'
           ELSE district
         END
         ORDER BY count DESC, name ASC
         LIMIT #{limit}
+        </script>
     """)
-    List<UserAreaStatVO> findTopAreas(@Param("userId") Long userId,
-                                            @Param("limit") int limit);
+    List<UserAreaStatVO> findTopAreasFiltered(@Param("userId") Long userId,
+                                              @Param("limit") int limit,
+                                              @Param("isSelf") boolean isSelf,
+                                              @Param("isMutual") boolean isMutual);
+
+    @Select("""
+        <script>
+        SELECT COUNT(*) FROM t_photo
+        WHERE deleted = 0 AND user_id = #{userId}
+          <if test="!isSelf and isMutual">
+            AND visibility IN (1, 2)
+          </if>
+          <if test="!isSelf and !isMutual">
+            AND visibility = 2
+          </if>
+        </script>
+    """)
+    long countPhotosFiltered(@Param("userId") Long userId,
+                             @Param("isSelf") boolean isSelf,
+                             @Param("isMutual") boolean isMutual);
 
     @Select("""
         SELECT DATE_FORMAT(MAX(COALESCE(photo_date, DATE(create_time))), '%Y-%m-%d')
@@ -228,10 +354,11 @@ public interface PhotoMapper extends BaseMapper<Photo> {
             SUM(CASE WHEN DATE(p.create_time) = CURDATE() THEN 1 ELSE 0 END) AS today_count,
             (SELECT COALESCE(p2.thumbnail_url, p2.image_url)
              FROM t_photo p2
-             WHERE p2.deleted = 0 AND p2.district = p.district
+             WHERE p2.deleted = 0 AND p2.visibility = 2 AND p2.district = p.district
              ORDER BY p2.create_time DESC LIMIT 1) AS latest_thumb_url
         FROM t_photo p
         WHERE p.deleted = 0
+          AND p.visibility = 2
           AND p.district IS NOT NULL AND p.district != ''
         GROUP BY p.district
         <if test="sortBy == 'userCount'">
@@ -249,10 +376,80 @@ public interface PhotoMapper extends BaseMapper<Photo> {
     List<DistrictRankVO> findDistrictRanking(@Param("sortBy") String sortBy,
                                              @Param("limit") int limit);
 
-    @Select("SELECT COUNT(DISTINCT district) FROM t_photo WHERE deleted = 0 AND district IS NOT NULL AND district != ''")
+    @Select("SELECT COUNT(DISTINCT district) FROM t_photo WHERE deleted = 0 AND visibility = 2 AND district IS NOT NULL AND district != ''")
     long countDistinctDistricts();
 
-    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND district IS NOT NULL AND district != ''")
+    @Select("SELECT COUNT(*) FROM t_photo WHERE deleted = 0 AND visibility = 2 AND district IS NOT NULL AND district != ''")
     long countAllPhotosWithDistrict();
 
+    @Select("""
+        <script>
+        SELECT COUNT(*) FROM t_photo
+        WHERE deleted = 0
+          AND latitude  BETWEEN #{lat} - (#{radiusKm} / 111.0) AND #{lat} + (#{radiusKm} / 111.0)
+          AND longitude BETWEEN #{lng} - (#{radiusKm} / (111.0 * COS(RADIANS(#{lat})))) AND #{lng} + (#{radiusKm} / (111.0 * COS(RADIANS(#{lat}))))
+          AND visibility = 2
+          AND (6371 * 2 * ASIN(SQRT(
+                   POW(SIN(RADIANS(latitude - #{lat}) / 2), 2) +
+                   COS(RADIANS(#{lat})) * COS(RADIANS(latitude)) *
+                   POW(SIN(RADIANS(longitude - #{lng}) / 2), 2)
+               ))) &lt;= #{radiusKm}
+        </script>
+    """)
+    long countNearby(@Param("lat") double lat,
+                     @Param("lng") double lng,
+                     @Param("radiusKm") double radiusKm);
+
+    @Select("""
+        <script>
+        SELECT COUNT(*) FROM t_photo
+        WHERE deleted = 0
+          AND DATE(create_time) = CURDATE()
+          AND visibility = 2
+          AND latitude  BETWEEN #{lat} - (#{radiusKm} / 111.0) AND #{lat} + (#{radiusKm} / 111.0)
+          AND longitude BETWEEN #{lng} - (#{radiusKm} / (111.0 * COS(RADIANS(#{lat})))) AND #{lng} + (#{radiusKm} / (111.0 * COS(RADIANS(#{lat}))))
+          AND (6371 * 2 * ASIN(SQRT(
+                   POW(SIN(RADIANS(latitude - #{lat}) / 2), 2) +
+                   COS(RADIANS(#{lat})) * COS(RADIANS(latitude)) *
+                   POW(SIN(RADIANS(longitude - #{lng}) / 2), 2)
+               ))) &lt;= #{radiusKm}
+        </script>
+    """)
+    long countToday(@Param("lat") double lat,
+                    @Param("lng") double lng,
+                    @Param("radiusKm") double radiusKm);
+
+    @Select("""
+        <script>
+        SELECT id, image_url, thumbnail_url, longitude, latitude,
+               location_name, photo_date, district
+        FROM t_photo
+        WHERE deleted = 0 AND user_id = #{targetUserId}
+          <choose>
+            <when test="isSelf">
+            </when>
+            <when test="mutualUserIds != null and mutualUserIds.size() > 0">
+              AND visibility IN (1, 2)
+            </when>
+            <otherwise>
+              AND visibility = 2
+            </otherwise>
+          </choose>
+        ORDER BY photo_date DESC
+        LIMIT 500
+        </script>
+    """)
+    List<com.maptrace.model.vo.FootprintVO.FootprintPhotoVO> findFootprintPhotos(
+            @Param("targetUserId") Long targetUserId,
+            @Param("isSelf") boolean isSelf,
+            @Param("mutualUserIds") List<Long> mutualUserIds);
+
+    @Select("""
+        SELECT DATE_FORMAT(create_time, '%m-%d') AS date, COUNT(*) AS count
+        FROM t_photo
+        WHERE deleted = 0 AND create_time >= #{since}
+        GROUP BY DATE_FORMAT(create_time, '%m-%d')
+        ORDER BY date
+    """)
+    List<DashboardStatsVO.TrendItem> countDailyPhotos(@Param("since") String since);
 }

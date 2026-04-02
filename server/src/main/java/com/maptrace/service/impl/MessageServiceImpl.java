@@ -21,6 +21,8 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -33,6 +35,7 @@ public class MessageServiceImpl implements MessageService {
     private final BusinessMetricsCollector metricsCollector;
     private final WebSocketSessionManager sessionManager;
     private final ObjectMapper objectMapper;
+    private final ExecutorService wsPushExecutor = Executors.newFixedThreadPool(4);
 
     @Override
     public List<ConversationVO> getConversations(Long userId) {
@@ -89,8 +92,7 @@ public class MessageServiceImpl implements MessageService {
      * 异步通过 WebSocket 推送新消息给目标用户
      */
     private void asyncPushToUser(Long toUserId, MessageVO messageVO) {
-        // 直接在新线程推送，避免阻塞 HTTP 响应
-        new Thread(() -> {
+        wsPushExecutor.submit(() -> {
             try {
                 Map<String, Object> payload = new HashMap<>();
                 payload.put("type", "new_message");
@@ -103,7 +105,7 @@ public class MessageServiceImpl implements MessageService {
             } catch (Exception e) {
                 log.warn("WebSocket 推送异常: toUserId={}, error={}", toUserId, e.getMessage());
             }
-        }).start();
+        });
     }
 
     private MessageVO toResponse(Message m) {

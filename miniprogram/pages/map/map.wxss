@@ -110,6 +110,18 @@ page { background-color: transparent; }
   border: 3rpx solid #07c160;
   border-radius: 20rpx;
 }
+
+/* 聚焦标记（从详情页跳转）：蓝色高亮卡片 */
+.focus-card {
+  background: #e6f0ff;
+  border: 3rpx solid #165DFF;
+  border-radius: 20rpx;
+}
+.focus-arrow {
+  background: #e6f0ff;
+  border-right: 3rpx solid #165DFF;
+  border-bottom: 3rpx solid #165DFF;
+}
 .photo-count {
   position: absolute;
   bottom: 6rpx;
@@ -263,42 +275,33 @@ page { background-color: transparent; }
   font-size: 22rpx; color: #999; margin-top: 8rpx;
 }
 
-/* ===== 隐藏照片悬浮提示条 ===== */
-.float-bar {
-  position: fixed;
-  bottom: -120rpx;
-  left: 24rpx; right: 24rpx;
-  z-index: 180;
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border-radius: 20rpx;
-  box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.1);
+/* ===== 隐藏照片提示条（内嵌上传面板） ===== */
+.hide-photos-inline {
   display: flex; align-items: center;
-  padding: 16rpx 20rpx;
-  gap: 12rpx;
-  transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 10rpx;
+  padding: 14rpx 16rpx;
+  margin: -18rpx -22rpx 12rpx;
+  background: #fff8e6;
+  border-radius: 20rpx 20rpx 0 0;
+  border-bottom: 1rpx solid #f0e6c8;
 }
-.float-bar.show {
-  /* 置于上传面板上方，避免重叠（上传面板约 40rpx 起、高约 340rpx） */
-  bottom: calc(env(safe-area-inset-bottom) + 400rpx);
+.hide-photos-inline-icon {
+  width: 32rpx; height: 32rpx; flex-shrink: 0; opacity: 0.6;
 }
-.float-bar-icon {
-  width: 36rpx; height: 36rpx; flex-shrink: 0; opacity: 0.6;
-}
-.float-bar-text {
-  flex: 1; font-size: 24rpx; color: #555;
+.hide-photos-inline-text {
+  flex: 1; font-size: 23rpx; color: #8a6d00;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.float-bar-btn {
+.hide-photos-inline-btn {
   flex-shrink: 0;
-  font-size: 24rpx; color: #666;
-  padding: 8rpx 20rpx;
-  background: #f0f0f0; border-radius: 24rpx;
+  font-size: 23rpx; color: #666;
+  padding: 8rpx 18rpx;
+  background: rgba(0,0,0,0.05); border-radius: 24rpx;
 }
-.float-bar-btn.primary {
+.hide-photos-inline-btn.primary {
   color: #fff; background: #07c160;
 }
-.float-bar-btn:active { opacity: 0.7; }
+.hide-photos-inline-btn:active { opacity: 0.7; }
 
 /* ===== 上传悬浮条 ===== */
 .upload-float {
@@ -401,6 +404,26 @@ page { background-color: transparent; }
 }
 .upload-float-img-add:active { background: #f9f9f9; }
 .upload-float-add-icon { width: 36rpx; height: 36rpx; opacity: 0.4; }
+
+/* 可见性选择 */
+.visibility-row { margin-bottom: 8rpx; }
+.visibility-options {
+  display: flex; gap: 12rpx; width: 100%;
+}
+.visibility-opt {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  gap: 6rpx; height: 60rpx;
+  font-size: 22rpx; color: #999;
+  background: #f5f5f5; border-radius: 30rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.2s ease;
+}
+.visibility-opt.active {
+  color: #07c160; background: #f0f9f0;
+  border-color: #07c160; font-weight: 600;
+}
+.visibility-opt:active { opacity: 0.7; }
+.visibility-icon { font-size: 24rpx; }
 
 /* 上传按钮 */
 .upload-float-submit {

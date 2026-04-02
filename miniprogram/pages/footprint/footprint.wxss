@@ -1,0 +1,114 @@
+page { background: transparent; }
+.container { width: 100%; height: 100vh; position: relative; }
+.map { width: 100%; height: 100%; }
+
+/* 顶部留白（使用系统导航栏） */
+
+/* 加载状态 */
+.loading-overlay {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); z-index: 150;
+  background: rgba(255,255,255,0.9); padding: 28rpx 48rpx;
+  border-radius: 20rpx; box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.1);
+}
+.loading-text { font-size: 28rpx; color: #666; }
+
+/* 空状态 */
+.empty-state {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); z-index: 150;
+  display: flex; flex-direction: column; align-items: center;
+  background: rgba(255,255,255,0.92); padding: 48rpx;
+  border-radius: 24rpx; box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.08);
+}
+.empty-text { font-size: 28rpx; color: #666; margin-bottom: 24rpx; }
+.empty-btn {
+  font-size: 26rpx; color: #fff; background: #07c160;
+  padding: 16rpx 40rpx; border-radius: 32rpx;
+}
+
+/* 超限提示 */
+.limit-tip {
+  position: fixed; top: 16rpx;
+  left: 50%; transform: translateX(-50%); z-index: 190;
+  background: rgba(0,0,0,0.6); color: #fff;
+  font-size: 22rpx; padding: 10rpx 24rpx; border-radius: 20rpx;
+}
+
+/* 顶部信息胶囊 */
+.info-bar {
+  position: fixed; top: 16rpx;
+  left: 50%; transform: translateX(-50%); z-index: 200;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  padding: 12rpx 28rpx;
+  border-radius: 32rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.08);
+  max-width: calc(100vw - 80rpx);
+}
+.info-bar-text {
+  font-size: 24rpx; color: #333; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* 右上角重置按钮 */
+.reset-btn {
+  position: fixed; top: 80rpx; right: 24rpx; z-index: 200;
+  width: 72rpx; height: 72rpx;
+  background: rgba(255,255,255,0.95);
+  border-radius: 50%;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.12);
+  display: flex; align-items: center; justify-content: center;
+}
+.reset-icon {
+  font-size: 38rpx; color: #333; line-height: 1;
+}
+
+/* 城市/区县气泡标记 */
+.city-bubble {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.92);
+  border: 3rpx solid #07c160;
+  border-radius: 50%;
+  box-shadow: 0 4rpx 16rpx rgba(7,193,96,0.2);
+}
+.city-bubble.size-s { width: 80rpx; height: 80rpx; }
+.city-bubble.size-m { width: 100rpx; height: 100rpx; }
+.city-bubble.size-l { width: 120rpx; height: 120rpx; }
+.city-bubble.size-xl { width: 140rpx; height: 140rpx; }
+.district-bubble { border-color: #165DFF; }
+.bubble-count { font-size: 28rpx; font-weight: 700; color: #07c160; }
+.district-bubble .bubble-count { color: #165DFF; }
+.bubble-name {
+  font-size: 16rpx; color: #666;
+  max-width: 120rpx;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* 照片缩略图标记（复用 map 页样式） */
+.photo-callout { display: flex; flex-direction: column; align-items: center; }
+.photo-card {
+  background: rgba(255,255,255,0.85);
+  border: 2rpx solid #fff; border-radius: 16rpx;
+  box-shadow: 8rpx 8rpx 24rpx rgba(0,0,0,0.08);
+  position: relative; overflow: hidden;
+}
+.photo-thumb { width: 108rpx; height: 100rpx; display: block; }
+.photo-count {
+  position: absolute; bottom: 6rpx; right: 6rpx;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 4rpx 10rpx; border-radius: 999rpx;
+  font-size: 10rpx; font-weight: 600; color: #fff;
+  background: #165DFF;
+}
+.photo-arrow-wrap {
+  width: 28rpx; height: 14rpx; overflow: hidden;
+  display: flex; justify-content: center; align-items: flex-start;
+}
+.photo-arrow {
+  width: 18rpx; height: 18rpx;
+  background: rgba(255,255,255,0.85);
+  transform: translateY(-9rpx) rotate(45deg);
+}
+

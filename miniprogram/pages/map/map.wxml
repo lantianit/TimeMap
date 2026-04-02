@@ -46,16 +46,15 @@
     </view>
   </view>
 
-  <!-- 隐藏照片悬浮提示条 -->
-  <view class="float-bar hide-photos-bar {{showHidePhotosBar ? 'show' : ''}}" catchtap="">
-    <image class="float-bar-icon" src="/images/icon-camera.svg" />
-    <text class="float-bar-text">其他照片遮挡上传位置？可以暂时隐藏</text>
-    <view class="float-bar-btn primary" bindtap="onHidePhotosConfirm">隐藏</view>
-    <view class="float-bar-btn" bindtap="onHidePhotosCancel">不用了</view>
-  </view>
-
   <!-- 上传悬浮条 -->
   <view class="upload-float {{showUploadBar ? 'show' : ''}}" catchtap="">
+    <!-- 隐藏照片提示条（内嵌在上传面板顶部） -->
+    <view class="hide-photos-inline" wx:if="{{showHidePhotosBar}}">
+      <image class="hide-photos-inline-icon" src="/images/icon-camera.svg" />
+      <text class="hide-photos-inline-text">其他照片遮挡上传位置？</text>
+      <view class="hide-photos-inline-btn primary" bindtap="onHidePhotosConfirm">隐藏</view>
+      <view class="hide-photos-inline-btn" bindtap="onHidePhotosCancel">不用了</view>
+    </view>
     <!-- 第一行：位置 -->
     <view class="upload-float-row">
       <image class="upload-float-icon" src="/images/icon-location.svg" />
@@ -80,7 +79,21 @@
         <text class="upload-float-desc-count">{{uploadDescLength}}/200</text>
       </view>
     </view>
-    <!-- 第三行：照片选择 + 上传按钮 -->
+    <!-- 可见性选择 -->
+    <view class="upload-float-row visibility-row">
+      <view class="visibility-options">
+        <view class="visibility-opt {{uploadVisibility === 0 ? 'active' : ''}}" bindtap="onVisibilityTap" data-v="0">
+          <text class="visibility-icon">🔒</text><text>仅自己</text>
+        </view>
+        <view class="visibility-opt {{uploadVisibility === 1 ? 'active' : ''}}" bindtap="onVisibilityTap" data-v="1">
+          <text class="visibility-icon">👥</text><text>互关可见</text>
+        </view>
+        <view class="visibility-opt {{uploadVisibility === 2 ? 'active' : ''}}" bindtap="onVisibilityTap" data-v="2">
+          <text class="visibility-icon">🌍</text><text>所有人</text>
+        </view>
+      </view>
+    </view>
+    <!-- 照片选择 + 上传按钮 -->
     <view class="upload-float-row second">
       <scroll-view class="upload-float-images" scroll-x enhanced show-scrollbar="{{false}}">
         <view class="upload-float-img-list">
@@ -161,7 +174,17 @@
     </block>
     <!-- 临时上传标记 / 聚焦标记：始终在最上层 -->
     <cover-view slot="callout" marker-id="99999" wx:if="{{showUploadBar || showHidePhotosBar || showFocusMarker}}">
-      <cover-view class="photo-callout" wx:if="{{tempPreviewImage}}">
+      <!-- 聚焦标记（从详情页跳转）：蓝色高亮边框 -->
+      <cover-view class="photo-callout" wx:if="{{showFocusMarker && tempPreviewImage}}">
+        <cover-view class="photo-card focus-card">
+          <cover-image class="photo-thumb" src="{{tempPreviewImage}}" />
+        </cover-view>
+        <cover-view class="photo-arrow-wrap">
+          <cover-view class="photo-arrow focus-arrow"></cover-view>
+        </cover-view>
+      </cover-view>
+      <!-- 上传预览标记 -->
+      <cover-view class="photo-callout" wx:elif="{{tempPreviewImage}}">
         <cover-view class="photo-card temp-card">
           <cover-image class="photo-thumb" src="{{tempPreviewImage}}" />
           <cover-view class="photo-count temp-count" wx:if="{{selectedImages.length > 1}}">{{selectedImages.length}}</cover-view>

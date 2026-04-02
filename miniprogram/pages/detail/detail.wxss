@@ -84,6 +84,18 @@
   color: #07c160;
 }
 
+.visibility-value {
+  color: #07c160;
+  white-space: nowrap;
+}
+
+.info-row .info-value-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-left: 20rpx;
+}
+
 .location-row .info-value {
   margin-left: 0;
 }

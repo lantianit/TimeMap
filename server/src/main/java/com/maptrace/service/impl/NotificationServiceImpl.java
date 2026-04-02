@@ -56,7 +56,28 @@ public class NotificationServiceImpl implements NotificationService {
                 .orderByDesc(Notification::getCreateTime);
         notificationMapper.selectPage(p, qw);
 
-        return p.getRecords().stream().map(this::toResponse).collect(Collectors.toList());
+        List<Notification> records = p.getRecords();
+        if (records.isEmpty()) return new java.util.ArrayList<>();
+
+        // 批量查用户信息，避免 N+1
+        Set<Long> userIds = new java.util.HashSet<>();
+        Set<Long> photoIds = new java.util.HashSet<>();
+        for (Notification n : records) {
+            if (!SYSTEM_TYPES.contains(n.getType()) && n.getFromUserId() != null) {
+                userIds.add(n.getFromUserId());
+            }
+            if (n.getPhotoId() != null) {
+                photoIds.add(n.getPhotoId());
+            }
+        }
+        java.util.Map<Long, User> userMap = userIds.isEmpty() ? java.util.Collections.emptyMap()
+                : userMapper.selectBatchIds(userIds).stream()
+                    .collect(java.util.stream.Collectors.toMap(User::getId, u -> u));
+        java.util.Map<Long, Photo> photoMap = photoIds.isEmpty() ? java.util.Collections.emptyMap()
+                : photoMapper.selectBatchIds(photoIds).stream()
+                    .collect(java.util.stream.Collectors.toMap(Photo::getId, ph -> ph));
+
+        return records.stream().map(n -> toBatchResponse(n, userMap, photoMap)).collect(java.util.stream.Collectors.toList());
     }
 
     @Override
@@ -73,6 +94,10 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private NotificationVO toResponse(Notification n) {
+        return toBatchResponse(n, java.util.Collections.emptyMap(), java.util.Collections.emptyMap());
+    }
+
+    private NotificationVO toBatchResponse(Notification n, java.util.Map<Long, User> userMap, java.util.Map<Long, Photo> photoMap) {
         NotificationVO r = new NotificationVO();
         r.setId(n.getId());
         r.setType(n.getType());
@@ -84,11 +109,10 @@ public class NotificationServiceImpl implements NotificationService {
         r.setCreateTime(n.getCreateTime() != null ? n.getCreateTime().toString() : "");
 
         if (SYSTEM_TYPES.contains(n.getType())) {
-            // 系统/管理员通知，不查用户表
             r.setFromNickname("系统通知");
             r.setFromAvatarUrl(null);
         } else {
-            User from = userMapper.selectById(n.getFromUserId());
+            User from = userMap.containsKey(n.getFromUserId()) ? userMap.get(n.getFromUserId()) : userMapper.selectById(n.getFromUserId());
             if (from != null) {
                 r.setFromNickname(from.getNickname());
                 r.setFromAvatarUrl(from.getAvatarUrl());
@@ -96,7 +120,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         if (n.getPhotoId() != null) {
-            Photo photo = photoMapper.selectById(n.getPhotoId());
+            Photo photo = photoMap.containsKey(n.getPhotoId()) ? photoMap.get(n.getPhotoId()) : photoMapper.selectById(n.getPhotoId());
             if (photo != null) {
                 r.setPhotoThumbnail(photo.getThumbnailUrl());
             }
